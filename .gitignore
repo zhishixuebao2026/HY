@@ -1,0 +1,6 @@
+# 测试截图（24M，仅本地调试用）
+screenshots/
+# 依赖与系统文件
+node_modules/
+.DS_Store
+*.log
