@@ -14,6 +14,37 @@
   /* 有余量时垂直居中；内容超高时 auto margin 按 0 处理，顶部始终可滚动到 */
   margin-block: auto;
 }
+.home-visual {
+  position: relative; isolation: isolate; overflow: hidden;
+  width: min(100%, 840px); height: clamp(138px, 20vh, 184px);
+  margin: 0 auto 22px; border-radius: 18px;
+  border: 1px solid rgba(165, 187, 255, .25);
+  background:
+    linear-gradient(90deg, rgba(5, 6, 15, .98) 0%, rgba(5, 6, 15, .78) 33%, rgba(5, 6, 15, .08) 74%),
+    linear-gradient(0deg, rgba(5, 6, 15, .52), transparent 58%),
+    url('../assets/img/home_garden.jpg') 62% 48% / cover no-repeat;
+  box-shadow: 0 18px 56px rgba(0,0,0,.42), inset 0 0 0 1px rgba(255,255,255,.035);
+  text-align: left;
+}
+.home-visual::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse at 72% 38%, rgba(251,191,36,.13), transparent 38%);
+  animation: gardenPulse 7s ease-in-out infinite alternate;
+}
+@keyframes gardenPulse { from { opacity: .4; } to { opacity: 1; } }
+.home-visual-copy {
+  position: absolute; left: clamp(18px, 4vw, 42px); top: 50%;
+  transform: translateY(-50%); width: min(64%, 500px);
+}
+.home-visual-kicker {
+  font: 700 9px/1.4 var(--font-num); letter-spacing: 2.2px;
+  color: #9fddf0; margin-bottom: 9px;
+}
+.home-visual-title {
+  font-size: clamp(17px, 2.5vw, 25px); font-weight: 700; letter-spacing: 1.5px;
+  color: #f3f2e8; text-shadow: 0 2px 20px rgba(0,0,0,.55); margin-bottom: 9px;
+}
+.home-visual-meta { font-size: 10px; color: #b2bdd2; letter-spacing: .5px; }
 .home-title {
   font-size: clamp(30px, 6.6vw, 62px); font-weight: 800; letter-spacing: 7px; line-height: 1.34;
   background: linear-gradient(100deg, #f8fbff 0%, var(--cyan) 30%, var(--violet) 62%, var(--gold) 100%);
@@ -295,6 +326,7 @@
   filter: drop-shadow(0 0 26px rgba(251,191,36,.5));
 }
 .end-title.lose { background: linear-gradient(100deg, #64748b, #cbd5e1, #475569); filter: none; }
+.end-title.draw { background: linear-gradient(100deg, #a78bfa, #f0abfc, #818cf8); filter: drop-shadow(0 0 22px rgba(192,132,252,.35)); }
 .end-reason { font-size: 14px; color: var(--txt-dim); line-height: 2; margin-bottom: 12px; font-style: italic; }
 .end-stats { display: flex; gap: 22px; justify-content: center; margin-bottom: 28px; flex-wrap: wrap; }
 .end-stat { text-align: center; }

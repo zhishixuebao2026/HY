@@ -358,6 +358,11 @@ body {
 .choice-card:hover { border-color: var(--cyan); transform: translateY(-3px); box-shadow: 0 8px 28px rgba(34,211,238,.22); }
 .choice-card .cc-t { font-size: 14px; font-weight: 700; margin-bottom: 5px; }
 .choice-card .cc-d { font-size: 11.5px; color: var(--txt-dim); line-height: 1.6; }
+.scry-grid { grid-template-columns: repeat(auto-fit, minmax(218px, 1fr)); }
+.scry-choice { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; align-items: center; min-width: 0; }
+.scry-choice .card { cursor: default; }
+.scry-info { min-width: 0; }
+.scry-info .cc-t, .scry-info .cc-d { overflow-wrap: anywhere; }
 
 /* ============================ 提示 toast ============================ */
 #toastBox { position: fixed; top: 66px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 7px; align-items: center; pointer-events: none; }

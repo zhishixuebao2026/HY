@@ -43,13 +43,12 @@ function enumerateActions(eng, myIdx) {
     if (!eng.canPlay(i)) continue;
     const def = CARD_MAP[p.hand[i]];
     const needEff = (def.effects || []).find(e => e.needTarget);
-    if (needEff) {
-      const valid = eng.getValidTargets(needEff.targetFilter || 'anyUnit', myIdx, def.tier);
-      if (valid.length === 0) {
-        acts.push({ type: 'play', handIdx: i, targetUid: null });
-      } else {
-        for (const t of valid) acts.push({ type: 'play', handIdx: i, targetUid: t });
-      }
+    const needsTarget = !!def.needTarget || !!needEff;
+    if (needsTarget) {
+      const filter = def.targetFilter || (needEff && (needEff.targetFilter || needEff.target)) || 'anyUnit';
+      const sourceTier = eng.handCardTier(myIdx, i);
+      const valid = eng.getValidTargets(filter, myIdx, sourceTier, def);
+      for (const targetUid of valid) acts.push({ type: 'play', handIdx: i, targetUid });
     } else {
       acts.push({ type: 'play', handIdx: i, targetUid: null });
     }
@@ -86,9 +85,10 @@ function scoreAction(eng, act, myIdx) {
 
   if (act.type === 'play') {
     const def = CARD_MAP[p.hand[act.handIdx]];
+    const cardTier = eng.handCardTier(myIdx, act.handIdx);
     let v = 0;
     if (def.type === 'ENTITY' || def.type === 'STRUCTURE') {
-      v += (def.atk || 0) * 1.0 + (def.hp || 0) * 0.85 + def.tier * 2.4;
+      v += (def.atk || 0) * 1.0 + (def.hp || 0) * 0.85 + cardTier * 2.4;
       if ((def.keywords || []).includes('嘲讽')) v += 1.5;
       if ((def.keywords || []).includes('丰饶')) v += 5;
       if (def.type === 'STRUCTURE') v += 2;
@@ -99,7 +99,7 @@ function scoreAction(eng, act, myIdx) {
         v += kills * 4;
       }
     } else {
-      v += 4 + def.tier * 0.5;
+      v += 4 + cardTier * 0.5;
       if (def.type === 'PARADOX') v += 4;
       const ops = (def.effects || []).map(e => e.op);
       if (ops.includes('annihilateAll')) {
@@ -124,12 +124,21 @@ function scoreAction(eng, act, myIdx) {
     if (act.targetUid) {
       const t = eng.findUnit(act.targetUid);
       if (t) {
-        if (t.owner === myIdx) v += 2;
-        else {
-          const e = (def.effects || []).find(x => x.needTarget);
-          if (e && (e.op === 'destroyEnemyTierBelow' || e.op === 'destroyEnemyStructure')) v += unitValue(t) * 0.9;
-          if (e && e.op === 'tierDownEnemy') v += 4;
-          if (e && e.op === 'buffAlly') v += 1;
+        const op = (def.effects || []).find(e => ['destroyEnemyTierBelow', 'destroyEnemyStructure', 'tierDownEnemy', 'buffAlly', 'tierUpAlly', 'upgradeAlly', 'copyStatsToAlly', 'grantIndestructible'].includes(e.op));
+        if (t.owner === myIdx) {
+          v += 1;
+          if (op && op.op === 'buffAlly') v += 2 + (op.atk || 0) + (op.hp || 0);
+          if (op && op.op === 'tierUpAlly') {
+            const boost = Math.min(op.bonus || op.n || 1, 3 - t.ascendCount);
+            const improvesPress = foe.board.some(enemy => enemy.hp > 0 && t.tier - enemy.tier < eng.pressThreshold(t) && t.tier + boost - enemy.tier >= eng.pressThreshold(t));
+            v += 3 + (improvesPress ? 7 : 0);
+          }
+          if (op && op.op === 'upgradeAlly') v += Math.max(2, unitValue(t) * 0.2);
+          if (op && op.op === 'copyStatsToAlly') v += 2;
+          if (op && op.op === 'grantIndestructible') v += t.hp <= 3 ? 6 : 2;
+        } else {
+          if (op && (op.op === 'destroyEnemyTierBelow' || op.op === 'destroyEnemyStructure')) v += unitValue(t) * 0.9;
+          if (op && op.op === 'tierDownEnemy') v += t.tier >= 3 ? 5 : 2;
         }
       }
     }
@@ -210,6 +219,9 @@ function runAITurn(eng, myIdx, onStep) {
       let ctx = {};
       if ((def.effects || []).some(e => e.op === 'narrativeChoice')) ctx.narrativeChoice = pickNarrative(eng, myIdx);
       if ((def.effects || []).some(e => e.op === 'transcendentalChoice')) ctx.transcendentalChoice = pickTranscendental(eng, myIdx);
+      const scry = (def.effects || []).find(e => e.op === 'scryPick');
+      if (scry) ctx.scryPickId = eng.player(myIdx).deck.slice(0, scry.n)
+        .sort((a, b) => CARD_MAP[b].cost - CARD_MAP[a].cost)[0];
       const r = eng.playCard(best.handIdx, best.targetUid, ctx);
       if (!r.ok) break;
     } else if (best.type === 'attack') {
@@ -240,8 +252,9 @@ function pickNarrative(eng, myIdx) {
 
 function pickTranscendental(eng, myIdx) {
   const p = eng.player(myIdx), foe = eng.player(1 - myIdx);
-  const enemyVal = foe.board.reduce((a, u) => a + unitValue(u), 0);
-  const myVal = p.board.reduce((a, u) => a + unitValue(u), 0);
+  // 选项一只抹除实体，结构会留下；只比较实际受影响的场面价值。
+  const enemyVal = foe.board.filter(u => u.type === 'ENTITY' && u.hp > 0).reduce((a, u) => a + unitValue(u), 0);
+  const myVal = p.board.filter(u => u.type === 'ENTITY' && u.hp > 0).reduce((a, u) => a + unitValue(u), 0);
   return enemyVal > myVal + 6 ? 0 : 1;
 }
 

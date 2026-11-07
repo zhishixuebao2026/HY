@@ -120,6 +120,7 @@ class GardenEngine {
       maxMana: 0,
       deck,
       hand: [],
+      handTierBonuses: [],
       board: [],
       graveyard: [],
       opsThisTurn: 0,
@@ -245,6 +246,12 @@ class GardenEngine {
   handTierBonus(idx) {
     return this.staticValue(idx, 'handTierBonus') || 0;
   }
+  handCardTier(idx, handIdx) {
+    const p = this.player(idx), def = CARD_MAP[p.hand[handIdx]];
+    if (!def) return 0;
+    const personalBonus = Array.isArray(p.handTierBonuses) ? (p.handTierBonuses[handIdx] || 0) : 0;
+    return Math.min(12, def.tier + this.handTierBonus(idx) + personalBonus);
+  }
   canPlayParadox(idx) {
     const p = this.player(idx);
     if (p.paradoxUsed) return false;
@@ -271,7 +278,7 @@ class GardenEngine {
      ============================================================ */
   startTurn() {
     const s = this.state;
-    if (s.winner) return;
+    if (s.winner !== null) return;
     s.turn++;
     const p = this.me;
     p.maxMana = Math.min(MAX_MANA, p.maxMana + 1);
@@ -306,17 +313,19 @@ class GardenEngine {
 
   endTurn() {
     const s = this.state;
-    if (s.winner) return;
+    if (s.winner !== null) return;
     const p = this.me;
     this._triggerAll('endOfTurn', p.idx);
+    // 本回合专属增益在结束阶段的触发效果结算后移除，避免跨回合残留。
+    for (const u of p.board) u.buffs = u.buffs.filter(buff => !buff.untilTurnEnd);
     this.recompute();
     this._cleanupDeaths();
-    if (s.winner) { this.onUpdate(); return; }
+    if (s.winner !== null) { this.onUpdate(); return; }
 
     // 后继差结算
     const foe = this.foe;
     this._settleSuccessors(p.opsThisTurn, foe.opsThisTurn);
-    if (s.winner) { this.onUpdate(); return; }
+    if (s.winner !== null) { this.onUpdate(); return; }
 
     // 切换玩家
     if (s.extraTurnOwner !== null) {
@@ -360,6 +369,7 @@ class GardenEngine {
      ============================================================ */
   _draw(p, n = 1) {
     for (let i = 0; i < n; i++) {
+      if (this.state.winner !== null) return;
       if (p.deck.length === 0) {
         p.fatigue++;
         const dmg = FATIGUE_BASE + p.fatigue - 1;
@@ -374,15 +384,28 @@ class GardenEngine {
         continue;
       }
       p.hand.push(p.deck.shift());
+      p.handTierBonuses.push(0);
     }
   }
 
   /* ============================================================
      出牌
      ============================================================ */
+  targetSpec(def) {
+    const effects = def.effects || [];
+    const effect = effects.find(candidate => candidate.needTarget) || effects.find(candidate =>
+      ['tierUpAlly', 'buffAlly', 'upgradeAlly', 'destroyEnemyTierBelow', 'grantIndestructible', 'copyStatsToAlly', 'tierDownEnemy', 'destroyEnemyStructure'].includes(candidate.op)
+    );
+    if (!def.needTarget && !effect) return null;
+    return {
+      effect,
+      filter: def.targetFilter || (effect && (effect.targetFilter || effect.target)) || 'anyUnit'
+    };
+  }
+
   canPlay(handIdx) {
     const s = this.state, p = this.me;
-    if (s.winner) return false;
+    if (s.winner !== null) return false;
     const cardId = p.hand[handIdx];
     if (!cardId) return false;
     const def = CARD_MAP[cardId];
@@ -392,6 +415,11 @@ class GardenEngine {
     if (p.mana < cost) return false;
     if (def.type === 'ENTITY' || def.type === 'STRUCTURE') {
       if (p.board.length >= BOARD_LIMIT) return false;
+    }
+    const target = this.targetSpec(def);
+    if (target) {
+      const sourceTier = this.handCardTier(p.idx, handIdx);
+      if (!this.getValidTargets(target.filter, p.idx, sourceTier, def).length) return false;
     }
     return true;
   }
@@ -408,20 +436,24 @@ class GardenEngine {
     const cardId = p.hand[handIdx];
     const def = CARD_MAP[cardId];
 
-    // 需要目标但未提供
-    const needsTarget = (def.effects || []).some(e => e.needTarget);
-    if (needsTarget && targetUid == null) {
-      const filterEff = def.effects.find(e => e.needTarget);
-      const valid = this.getValidTargets(filterEff.targetFilter || 'anyUnit', p.idx, def.tier);
-      if (valid.length > 1) {
-        s.pending = { kind: 'play', handIdx, cardId, filter: filterEff.targetFilter };
-        return { ok: false, needTarget: true, filter: filterEff.targetFilter, valid };
-      } else if (valid.length === 1) {
+    const target = this.targetSpec(def);
+    const sourceTier = this.handCardTier(p.idx, handIdx);
+    if (target) {
+      const valid = this.getValidTargets(target.filter, p.idx, sourceTier, def);
+      if (!valid.length) return { ok: false, needTarget: true, noTargets: true, filter: target.filter, valid };
+      if (targetUid == null) {
+        if (valid.length > 1) {
+          s.pending = { kind: 'play', handIdx, cardId, filter: target.filter };
+          return { ok: false, needTarget: true, filter: target.filter, valid };
+        }
         targetUid = valid[0];
+      } else if (!valid.includes(targetUid)) {
+        return { ok: false, needTarget: true, invalidTarget: true, filter: target.filter, valid };
       }
     }
 
     p.hand.splice(handIdx, 1);
+    if (Array.isArray(p.handTierBonuses)) p.handTierBonuses.splice(handIdx, 1);
     const cost = this.effectiveCost(def, p);
     p.mana -= cost;
     p.opsThisTurn++;
@@ -435,10 +467,10 @@ class GardenEngine {
         u.baseAtk += 1; u.baseHp += 1; u.atk += 1; u.hp += 1; u.maxHp += 1;
       }
       // 延展：手牌 / 牌库侧抬升，入场即生效（故也写回 baseTier，避免被 recompute 抹掉）
-      const hb = this.handTierBonus(p.idx);
-      if (hb) {
-        u.baseTier += hb; u.tier += hb;
-        this.addLog(`延展：【${def.name}】入场时层级 +${hb}（当前 ${u.tier}）`, 'buff');
+      const tierBonus = sourceTier - def.tier;
+      if (tierBonus > 0) {
+        u.baseTier = sourceTier; u.tier = sourceTier;
+        this.addLog(`层级加成：【${def.name}】入场时层级 +${tierBonus}（当前 ${u.tier}）`, 'buff');
       }
       p.board.push(u);
       this.recompute();
@@ -447,8 +479,9 @@ class GardenEngine {
       this._runEffects(u, 'battlecry', Object.assign({ targetUid }, extraCtx));
     } else {
       // CONCEPT / PARADOX
-      if (def.type === 'PARADOX') p.paradoxUsed = true;
+        if (def.type === 'PARADOX') p.paradoxUsed = true;
       const temp = makeUnit(cardId, p.idx);
+      temp.baseTier = sourceTier; temp.tier = sourceTier;
       temp.uid = '_cast_' + nextUid();
       this._runEffects(temp, 'cast', Object.assign({ targetUid }, extraCtx));
       p.graveyard.push(cardId);
@@ -471,15 +504,34 @@ class GardenEngine {
   }
 
   /* ---------- 目标选择 ---------- */
-  getValidTargets(filter, myIdx, sourceTier = 99) {
-    const s = this.state;
+  getValidTargets(filter, myIdx, sourceTier = 99, cardDef = null) {
     const out = [];
+    const mine = this.player(myIdx), foes = this.player(1 - myIdx);
+    const effect = cardDef ? this.targetSpec(cardDef)?.effect : null;
+    const canResolve = u => {
+      if (!effect) return true;
+      switch (effect.op) {
+        case 'tierUpAlly': {
+          const top = !mine.board.some(other => other !== u && other.type === 'ENTITY' && other.hp > 0 && other.tier > u.tier);
+          const amount = (top && effect.bonus) ? effect.bonus : effect.n;
+          return u.tier < 12 && u.ascendCount + amount <= ASCEND_LIMIT;
+        }
+        case 'upgradeAlly':
+          return mine.deck.some(id => CARD_MAP[id].type === 'ENTITY' && CARD_MAP[id].cost >= u.cost + effect.n);
+        case 'copyStatsToAlly':
+          return mine.board.some(other => other !== u && other.type === 'ENTITY' && other.hp > 0);
+        case 'destroyEnemyTierBelow':
+          return u.tier < effect.n && !this.isImmuneTo(u, sourceTier);
+        case 'tierDownEnemy':
+          return !this.isImmuneTo(u, sourceTier);
+        default:
+          return true;
+      }
+    };
     const push = (u) => {
-      if (u.hp <= 0) return;
-      if (this.isUntargetable(u, sourceTier)) return;
+      if (u.hp <= 0 || this.isUntargetable(u, sourceTier) || !canResolve(u)) return;
       out.push(u.uid);
     };
-    const mine = this.player(myIdx), foes = this.player(1 - myIdx);
     switch (filter) {
       case 'allyEntity': mine.board.filter(u => u.type === 'ENTITY').forEach(push); break;
       case 'allyUnit': mine.board.forEach(push); break;
@@ -501,7 +553,7 @@ class GardenEngine {
     for (const eff of def.effects) {
       if (eff.when !== when) continue;
       this._execEffect(unit, eff, ctx);
-      if (this.state.winner) return;
+      if (this.state.winner !== null) return;
     }
   }
 
@@ -511,7 +563,7 @@ class GardenEngine {
     for (const u of list) {
       if (u.hp <= 0) continue;
       this._runEffects(u, when, { extraUnit });
-      if (this.state.winner) return;
+      if (this.state.winner !== null) return;
     }
   }
 
@@ -545,6 +597,7 @@ class GardenEngine {
         for (let i = 0; i < eff.n && p.hand.length; i++) {
           const idx = Math.floor(this.rng() * p.hand.length);
           const c = p.hand.splice(idx, 1)[0];
+          p.handTierBonuses.splice(idx, 1);
           p.graveyard.push(c);
           this.addLog(`${p.name} 弃掉【${CARD_MAP[c].name}】`, 'info');
         }
@@ -553,6 +606,7 @@ class GardenEngine {
         for (let i = 0; i < eff.discard && p.hand.length; i++) {
           const idx = Math.floor(this.rng() * p.hand.length);
           p.graveyard.push(p.hand.splice(idx, 1)[0]);
+          p.handTierBonuses.splice(idx, 1);
         }
         this._draw(p, eff.draw);
         this.addLog(`${p.name} 弃 ${eff.discard} 抽 ${eff.draw}`, 'draw');
@@ -642,8 +696,7 @@ class GardenEngine {
         break;
       }
       case 'tempTierUpAll':
-        this._tempTier = eff.n;
-        for (const u of p.board) { if (u.type === 'ENTITY' && u.hp > 0) u.buffs.push({ tier: eff.n }); }
+        for (const u of p.board) { if (u.type === 'ENTITY' && u.hp > 0) u.buffs.push({ tier: eff.n, untilTurnEnd: true }); }
         this.addLog(`${p.name} 的全部实体本回合层级视为 +${eff.n}`, 'tier');
         break;
       case 'tierDownEnemy':
@@ -653,7 +706,9 @@ class GardenEngine {
         }
         break;
       case 'tierDownAll':
-        for (const pl of s.players) for (const u of pl.board) { if (u.hp > 0) u.buffs.push({ tier: -(eff.n) }); }
+        for (const pl of s.players) for (const u of pl.board) {
+          if (u.type === 'ENTITY' && u.hp > 0) u.buffs.push({ tier: -(eff.n) });
+        }
         this.addLog(`战场所有实体层级 -${eff.n}`, 'tier');
         break;
 
@@ -701,7 +756,7 @@ class GardenEngine {
       /* ---- 群体削弱 ---- */
       case 'debuffAllOthers':
         for (const pl of s.players) for (const u of pl.board) {
-          if (u === src || u.hp <= 0) continue;
+          if (u === src || u.type !== 'ENTITY' || u.hp <= 0) continue;
           u.buffs.push({ atk: -(eff.atk || 0), hp: -(eff.hp || 0) });
           u.atk = Math.max(0, u.atk - (eff.atk || 0));
           u.maxHp = Math.max(1, u.maxHp - (eff.hp || 0));
@@ -718,6 +773,7 @@ class GardenEngine {
           const d = CARD_MAP[cid];
           if (d && d.tier % 2 === 0) {
             foe.hand.splice(i, 1);
+            foe.handTierBonuses.splice(i, 1);
             foe.graveyard.push(cid);
             this.addLog(`康托尔对角线命中：弃掉对手的【${d.name}】（层级 ${d.tier}）`, 'debuff');
           } else {
@@ -729,38 +785,53 @@ class GardenEngine {
       case 'addCardToHand':
         if (p.hand.length < HAND_LIMIT) {
           p.hand.push(eff.cardId);
+          p.handTierBonuses.push(0);
           this.addLog(`${p.name} 将【${CARD_MAP[eff.cardId].name}】置入手牌`, 'draw');
         }
         break;
       case 'scryPick': {
         const n = Math.min(eff.n, p.deck.length);
         if (n === 0) break;
-        const cands = p.deck.slice(0, n);
-        // 选择费用最高的一张
-        cands.sort((a, b) => CARD_MAP[b].cost - CARD_MAP[a].cost);
-        const pick = cands[0];
-        p.deck = p.deck.filter(c => c !== pick);
-        if (p.hand.length < HAND_LIMIT) p.hand.push(pick);
-        p.deck = shuffle(p.deck.concat(cands.slice(1)), this.rng);
+        const cands = p.deck.splice(0, n);
+        // 玩家可指定检视结果；AI / 未传选择时采用最高费用的稳定默认策略。
+        let pickIdx = ctx.scryPickId ? cands.indexOf(ctx.scryPickId) : -1;
+        if (pickIdx < 0) {
+          pickIdx = 0;
+          for (let i = 1; i < cands.length; i++) {
+            if (CARD_MAP[cands[i]].cost > CARD_MAP[cands[pickIdx]].cost) pickIdx = i;
+          }
+        }
+        const pick = cands.splice(pickIdx, 1)[0];
+        if (p.hand.length < HAND_LIMIT) {
+          p.hand.push(pick);
+          p.handTierBonuses.push(0);
+        } else {
+          p.deck.push(pick);
+        }
+        p.deck = shuffle(p.deck.concat(cands), this.rng);
         this.addLog(`可测基数检视 ${n} 张，取走【${CARD_MAP[pick].name}】`, 'draw');
         break;
       }
       case 'tutorStructure': {
         const i = p.deck.findIndex(c => CARD_MAP[c].type === 'STRUCTURE');
-        if (i >= 0) {
+        if (i >= 0 && p.hand.length < HAND_LIMIT) {
           const c = p.deck.splice(i, 1)[0];
-          if (p.hand.length < HAND_LIMIT) p.hand.push(c);
+          p.hand.push(c);
+          p.handTierBonuses.push(0);
           this.addLog(`理论世界搜寻到【${CARD_MAP[c].name}】`, 'draw');
         }
         break;
       }
       case 'copyHighestHandCard': {
-        if (!p.hand.length) break;
-        const best = p.hand.slice().sort((a, b) => CARD_MAP[b].tier - CARD_MAP[a].tier)[0];
-        if (p.hand.length < HAND_LIMIT) {
-          p.hand.push(best);
-          this.addLog(`镜像宇宙复制了【${CARD_MAP[best].name}】`, 'draw');
+        if (!p.hand.length || p.hand.length >= HAND_LIMIT) break;
+        let bestIdx = 0;
+        for (let i = 1; i < p.hand.length; i++) {
+          if (this.handCardTier(p.idx, i) > this.handCardTier(p.idx, bestIdx)) bestIdx = i;
         }
+        const best = p.hand[bestIdx];
+        p.hand.push(best);
+        p.handTierBonuses.push(p.handTierBonuses[bestIdx] || 0);
+        this.addLog(`镜像宇宙复制了【${CARD_MAP[best].name}】`, 'draw');
         break;
       }
       case 'summonSelfTierDown': {
@@ -790,8 +861,16 @@ class GardenEngine {
       case 'itmDraw': {
         if (!p.deck.length) { this._draw(p, 1); break; }
         const c = p.deck.shift();
-        if (p.hand.length < HAND_LIMIT) p.hand.push(c);
-        this.addLog(`无限时间图灵机推演出【${CARD_MAP[c].name}】`, 'draw');
+        if (p.hand.length < HAND_LIMIT) {
+          const drawnDef = CARD_MAP[c];
+          const baseTier = Math.min(12, drawnDef.tier + this.handTierBonus(p.idx));
+          const tierBonus = drawnDef.type === 'ENTITY' ? Math.max(0, Math.min(1, 12 - baseTier)) : 0;
+          p.hand.push(c);
+          p.handTierBonuses.push(tierBonus);
+          this.addLog(`无限时间图灵机推演出【${CARD_MAP[c].name}】${tierBonus ? '（层级 +1）' : ''}`, 'draw');
+        } else {
+          this.addLog(`手牌已满：无限时间图灵机推演出的【${CARD_MAP[c].name}】被烧掉`, 'info');
+        }
         break;
       }
       case 'upgradeAlly': {
@@ -847,12 +926,26 @@ class GardenEngine {
         this.addLog(`transcend-超巨网络：对手牌库顶 ${n} 张被归虚`, 'debuff');
         break;
       }
-      case 'damageBothHeroes':
+      case 'damageBothHeroes': {
+        if (s.damageInverted) {
+          for (const pl of s.players) this._damageHero(pl.idx, eff.n, '超验矩');
+          break;
+        }
         for (const pl of s.players) {
           pl.existence -= eff.n;
-          this.addLog(`${pl.name} 存在度 -${eff.n}`, 'damage');
+          this.addLog(`超验矩使 ${pl.name} 的存在度 -${eff.n}（剩余 ${Math.max(0, pl.existence)}）`, 'damage');
+          this.fx('heroDamage', { idx: pl.idx, amount: eff.n });
+        }
+        const fallen = s.players.map(pl => pl.existence <= 0);
+        if (fallen[0] && fallen[1]) {
+          this._win('draw', `超验矩同时抹除了双方存在度，战局归于平局`);
+        } else if (fallen[0]) {
+          this._win(1, `${s.players[0].name} 的存在度被超验矩抹除`);
+        } else if (fallen[1]) {
+          this._win(0, `${s.players[1].name} 的存在度被超验矩抹除`);
         }
         break;
+      }
       case 'winIfSuccessorLead':
         if (p.successorDelta >= eff.n) {
           this._win(p.idx, `『花园』最终丰饶 —— 后继差 ${p.successorDelta} ≥ ${eff.n}，花园为自身呈现了最终丰饶`);
@@ -868,7 +961,7 @@ class GardenEngine {
           const e = foe.board.filter(u => u.type === 'ENTITY' && u.hp > 0).sort((a, b) => b.atk - a.atk)[0];
           if (e) { e.buffs.push({ tier: -3 }); this.addLog(`叙事：【${e.name}】层级 -3`, 'tier'); }
         } else {
-          for (const u of p.board) if (u.type === 'ENTITY' && u.hp > 0) u.buffs.push({ atk: 3, hp: 0 });
+          for (const u of p.board) if (u.type === 'ENTITY' && u.hp > 0) u.buffs.push({ atk: 3, hp: 0, untilTurnEnd: true });
           this.addLog('叙事：本回合己方实体 +3 攻击', 'buff');
         }
         break;
@@ -877,11 +970,11 @@ class GardenEngine {
         const choice = ctx.transcendentalChoice != null ? ctx.transcendentalChoice : 0;
         if (choice === 0) {
           for (const pl of s.players) for (const u of pl.board.slice()) {
-            if (u !== src && u.hp > 0) this._destroy(u, true, 'transcendental');
+            if (u !== src && u.type === 'ENTITY' && u.hp > 0) this._destroy(u, true, 'transcendental');
           }
           this.addLog('Transcendental 抹除了战场上所有实体', 'annihilate');
         } else {
-          for (const u of p.board) if (u !== src && u.hp > 0) { u.ascendCount = Math.min(ASCEND_LIMIT, u.ascendCount + 2); }
+          for (const u of p.board) if (u !== src && u.type === 'ENTITY' && u.hp > 0) u.buffs.push({ tier: 2 });
           this.addLog('Transcendental 使己方实体层级 +2', 'tier');
         }
         break;
@@ -912,6 +1005,10 @@ class GardenEngine {
 
     const p = this.player(a.owner);
     const foe = this.other(a.owner);
+    const defender = targetUid === 'hero' ? null : this.findUnit(targetUid);
+    if (targetUid !== 'hero' && (!defender || defender.hp <= 0 || defender.owner === a.owner)) {
+      return { ok: false, msg: '攻击目标无效' };
+    }
     const taunts = foe.board.filter(x => x.hp > 0 && (x.keywords || []).includes('嘲讽'));
     // 只要对手场上还有存活的嘲讽单位，就只能打嘲讽 —— 英雄同样受保护。
     // 原写法多了一个 targetUid !== 'hero' 的条件，导致可以直接点脸绕过嘲讽，
@@ -936,8 +1033,7 @@ class GardenEngine {
       this._damageHero(foe.idx, a.atk + atkBonus, `【${a.name}】`);
       this.fx('attack', { uid: a.uid, target: 'hero', owner: a.owner });
     } else {
-      const d = this.findUnit(targetUid);
-      if (!d || d.hp <= 0) return { ok: false };
+      const d = defender;
       const thr = this.pressThreshold(a);
       const diff = a.tier - d.tier;
       if (diff >= thr) {
@@ -1047,7 +1143,7 @@ class GardenEngine {
     if (unit.def && unit.def.effects) {
       for (const eff of unit.def.effects) {
         if (eff.when === 'deathrattle') this._execEffect(unit, eff, {});
-        if (this.state.winner) return;
+        if (this.state.winner !== null) return;
       }
     }
     // 哈姆金斯实在论：半血复活
@@ -1092,8 +1188,9 @@ class GardenEngine {
     if (this.state.winner !== null) return;
     this.state.winner = idx;
     this.state.winReason = reason;
-    this.addLog(`★ ${this.player(idx).name} 获胜 —— ${reason}`, 'win');
-    this.fx('win', { idx });
+    const result = idx === 'draw' ? '对局平局' : `${this.player(idx).name} 获胜`;
+    this.addLog(`★ ${result} —— ${reason}`, idx === 'draw' ? 'info' : 'win');
+    this.fx(idx === 'draw' ? 'draw' : 'win', { idx });
   }
 
   /* ---------- 序列化快照（AI 用） ---------- */

@@ -32,7 +32,7 @@ const PROC_STYLES = ['nebula','fractal','topology','lattice','spiral','voronoi',
 
 /* ------------------------------------------------------------
    卡牌数据
-   art: 对应 assets/img/{art}.webp  (仅 16 张有专属插画)
+   art: 对应 assets/img/card_{art}.webp/jpg（其余卡牌使用程序化纹理）
    proc: 程序化纹理风格
    ------------------------------------------------------------ */
 const CARDS = [
@@ -511,21 +511,21 @@ const CARDS = [
   },
   {
     id:'065', name:'负火之主', en:'Lord of Negative Fire', type:'ENTITY', tier:10, cost:10, atk:11, hp:11,
-    proc:'nebula', keywords:[], text:'战吼：消灭一个敌方结构卡。亡语：随机消灭一个敌方实体。',
+    art:'negative_fire_lord', artExt:'jpg', keywords:[], text:'战吼：消灭一个敌方结构卡。亡语：随机消灭一个敌方实体。',
     effects:[{when:'battlecry', op:'destroyEnemyStructure'},{when:'deathrattle', op:'destroyRandomEnemy'}], needTarget:true, targetFilter:'enemyStructure',
     lore:'负火的号召如雷贯耳，万界归一者们蜂拥而至，化为了祂父神斗篷下的阴影。',
     source:'《万众狂欢》'
   },
   {
     id:'066', name:'非树', en:'The Un-tree', type:'ENTITY', tier:9, cost:9, atk:8, hp:14,
-    proc:'tree', keywords:['嘲讽'], text:'嘲讽。亡语：战场上所有实体层级 -1。',
+    art:'untree', artExt:'jpg', keywords:['嘲讽'], text:'嘲讽。亡语：战场上所有实体层级 -1。',
     effects:[{when:'deathrattle', op:'tierDownAll', n:1}],
     lore:'非树开始疯狂的摇曳着自己的躯体，周围顿时电闪雷鸣：花———园———！！！！！',
     source:'《分形图》'
   },
   {
     id:'067', name:'仪机·超验真空', en:'Yiji · Transcendent Vacuum', type:'ENTITY', tier:11, cost:11, atk:11, hp:11,
-    proc:'nebula', keywords:[], text:'战吼：抹除敌方场上所有结构卡，每抹除 1 张，此卡获得 +2/+2。',
+    art:'transcendent_vacuum', artExt:'jpg', keywords:[], text:'战吼：抹除敌方场上所有结构卡，每抹除 1 张，此卡获得 +2/+2。',
     effects:[{when:'battlecry', op:'annihilateEnemyStructures', atk:2, hp:2}],
     lore:'书籍自燃，石碑风化，硬盘上的磁畴随机翻转……连记叙和超记叙的永恒集体记忆都皆被全面性擦除了。',
     source:'《万众狂欢》'
@@ -560,7 +560,7 @@ const CARDS = [
   },
   {
     id:'072', name:'绝对无限', en:'Absolute Infinity', type:'ENTITY', tier:12, cost:12, atk:16, hp:14,
-    proc:'mandelbrot', keywords:['不可指定'], text:'不可指定：无法被任何效果指定。战吼：抽 3 张牌。',
+    art:'absolute_infinity', artExt:'jpg', keywords:['不可指定'], text:'不可指定：无法被任何效果指定。战吼：抽 3 张牌。',
     effects:[{when:'static', op:'untargetableBelow', n:13},{when:'battlecry', op:'draw', n:3}],
     lore:'永无止境的未完成构造的无幂集的绝对无限，一切可构造的 n—巨大基数的集合与非其他类元素集合的真类宇宙。',
     source:'《分形图》'
@@ -618,5 +618,5 @@ const RULES = [
   { title:'三、幂集跃迁', body:'每回合只能跃迁 1 次，消耗 2 点算力，使己方一张卡的层级 +1。这对应康托尔的幂集运算——任何集合的幂集都严格大于原集合。每张卡累计最多跃迁 3 次（递归上界），超过后无法继续。' },
   { title:'四、后继差 —— 第二条胜利线', body:'设定原文：「唯一有意义的，就是能实现对于敌人操作次数的碾压。你比对方有着更多的操作后继，哪怕最终只多出一次，胜负便已能分晓。」本作将其实现为：每回合结束时比较双方本回合的操作数（出牌 / 攻击 / 跃迁均计 1 次）。出于对局平衡，需本回合至少领先 2 次操作才开始累积「后继差」，且每回合最多累积 3 点；设定中「只多一次」的绝对性，由【后继碾压】的终局判定体现。当累积达到 12，该方立即获胜，无论场上局势如何。' },
   { title:'五、悖论区', body:'悖论卡在通常状态下无法打出。只有当己方场上存在「丰饶」关键词的卡（万有公理宇宙、可构造宇宙 L、冯·诺依曼宇宙 V、超视界拓扑网、莫哲·园丁）时，悖论区解锁，每回合可打出 1 张悖论卡。这对应万有公理宇宙「将矛盾也作为理论的一部分呈现」的设定。' },
-  { title:'六、存在度', body:'双方各有 35 点存在度（爬塔模式为 30 点）。受到攻击或效果伤害时扣除，归零即战败。牌库耗尽后每次抽牌会受到递增的「归虚伤害」（1、2、3……）。' }
+  { title:'六、存在度', body:'双方各有 35 点存在度（爬塔模式为 30 点）。受到攻击或效果伤害时扣除，归零即战败；同一效果同时使双方归零时判为平局。牌库耗尽后每次抽牌会受到递增的「归虚伤害」（1、2、3……）。' }
 ];
