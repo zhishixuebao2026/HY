@@ -358,7 +358,7 @@ function procTexture(cardId, style, tierColor, size = 320) {
 function cardArt(card) {
   if (card.art) {
     if (window.__IMG && window.__IMG[card.art]) return window.__IMG[card.art];
-    return 'assets/img/card_' + card.art + '.webp';
+    return 'assets/img/card_' + card.art + '.' + (card.artExt || 'webp');
   }
   const style = card.proc || PROC_STYLES[hashStr(card.id) % PROC_STYLES.length];
   const color = (TIERS[card.tier] || TIERS[0]).color;

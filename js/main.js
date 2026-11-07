@@ -8,7 +8,11 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
   const v = document.getElementById('view' + name[0].toUpperCase() + name.slice(1));
   if (v) v.classList.add('on');
-  document.querySelectorAll('.navtab').forEach(t => t.classList.toggle('on', t.dataset.view === name));
+  document.querySelectorAll('.navtab').forEach(t => {
+    const active = t.dataset.view === name;
+    t.classList.toggle('on', active);
+    if (active) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+  });
   currentView = name;
   if (name === 'codex') Codex.init();
   if (name === 'rules') Rulebook.init();
@@ -29,6 +33,16 @@ function renderHome() {
   if (host.dataset.built) { refreshAcademyCard(); return; }
   host.dataset.built = '1';
   host.className = 'home-hero';
+
+  const artPanel = el('section', 'home-visual');
+  artPanel.setAttribute('role', 'img');
+  artPanel.setAttribute('aria-label', '星际花园主视觉：一朵由金色数学光丝构成的花，悬浮于深空与轨道之间');
+  const artCopy = el('div', 'home-visual-copy');
+  artCopy.appendChild(el('div', 'home-visual-kicker', 'THE GARDEN · TRANFINITE CARD BATTLEGROUND'));
+  artCopy.appendChild(el('div', 'home-visual-title', '在无限之后，仍有一座花园。'));
+  artCopy.appendChild(el('div', 'home-visual-meta', '13 层阶梯　·　72 张卡牌　·　双重胜利路径'));
+  artPanel.appendChild(artCopy);
+  host.appendChild(artPanel);
 
   host.appendChild(el('div', 'home-title', '花园：超限算力战争'));
   host.appendChild(el('div', 'home-en', 'The Garden · War of Transfinite Computation'));
@@ -210,8 +224,39 @@ function startBattle(deckId, customDeck) {
 /* ============================================================
    初始化
    ============================================================ */
+function enhanceKeyboardControls(root = document) {
+  const nodes = [];
+  if (root.matches && root.matches('*')) nodes.push(root);
+  if (root.querySelectorAll) nodes.push(...root.querySelectorAll('*'));
+  nodes.forEach(node => {
+    if (node.dataset.keyboardControl || typeof node.onclick !== 'function') return;
+    if (/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(node.tagName)) return;
+    node.dataset.keyboardControl = 'true';
+    node.setAttribute('role', 'button');
+    node.tabIndex = 0;
+    if (!node.hasAttribute('aria-label')) {
+      const label = (node.title || node.textContent || '').trim().replace(/\s+/g, ' ');
+      if (label) node.setAttribute('aria-label', label.slice(0, 120));
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initStardust();
+  enhanceKeyboardControls();
+  const controlsObserver = new MutationObserver(records => {
+    records.forEach(record => record.addedNodes.forEach(node => {
+      if (node.nodeType === 1) enhanceKeyboardControls(node);
+    }));
+  });
+  controlsObserver.observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('keydown', ev => {
+    if (!['Enter', ' '].includes(ev.key) || ev.repeat) return;
+    const control = ev.target.closest('[data-keyboard-control="true"]');
+    if (!control) return;
+    ev.preventDefault();
+    control.click();
+  });
 
   document.querySelectorAll('.navtab').forEach(t => {
     t.onclick = () => showView(t.dataset.view);

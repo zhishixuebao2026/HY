@@ -211,13 +211,18 @@ function initStardust() {
   const cv = document.getElementById('stardust');
   if (!cv) return;
   const ctx = cv.getContext('2d');
-  let W = 0, H = 0, stars = [], dust = [];
+  let W = 0, H = 0, stars = [], dust = [], frame = 0, running = false, t = 0;
+  const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   function resize() {
-    W = cv.width = window.innerWidth;
-    H = cv.height = window.innerHeight;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     stars = [];
-    const n = Math.floor(W * H / 9000);
+    const n = Math.min(180, Math.floor(W * H / 12000));
     for (let i = 0; i < n; i++) {
       stars.push({
         x: Math.random() * W, y: Math.random() * H,
@@ -240,10 +245,10 @@ function initStardust() {
     }
   }
   resize();
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', resize, { passive: true });
 
-  let t = 0;
-  function loop() {
+  function renderFrame() {
+    if (!running) return;
     t += 0.016;
     ctx.clearRect(0, 0, W, H);
     // 星云团
@@ -265,9 +270,17 @@ function initStardust() {
       ctx.fillStyle = `rgba(${s.hue},${s.a * tw})`;
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill();
     }
-    requestAnimationFrame(loop);
+    frame = requestAnimationFrame(renderFrame);
   }
-  loop();
+  function syncAnimation() {
+    const shouldRun = !document.hidden && !motionQuery.matches;
+    if (shouldRun && !running) { running = true; frame = requestAnimationFrame(renderFrame); }
+    else if (!shouldRun && running) { running = false; cancelAnimationFrame(frame); }
+  }
+  document.addEventListener('visibilitychange', syncAnimation);
+  if (motionQuery.addEventListener) motionQuery.addEventListener('change', syncAnimation);
+  else if (motionQuery.addListener) motionQuery.addListener(syncAnimation);
+  syncAnimation();
 }
 
 /* ============================================================
@@ -331,12 +344,19 @@ function toast(msg, kind = '') {
 }
 
 /* ---------- 弹窗 ---------- */
+let modalReturnFocus = null;
 function openModal(title, bodyNode, footNodes) {
   const mask = document.getElementById('modalMask');
+  modalReturnFocus = document.activeElement;
+  mask.setAttribute('role', 'dialog');
+  mask.setAttribute('aria-modal', 'true');
+  mask.setAttribute('aria-label', title);
   const m = el('div', 'modal');
+  m.tabIndex = -1;
   const head = el('div', 'modal-head');
   head.appendChild(el('h3', null, title));
   const x = el('button', 'x-close', '×');
+  x.setAttribute('aria-label', '关闭弹窗');
   x.onclick = closeModal;
   head.appendChild(x);
   m.appendChild(head);
@@ -351,12 +371,27 @@ function openModal(title, bodyNode, footNodes) {
   mask.innerHTML = '';
   mask.appendChild(m);
   mask.classList.add('on');
+  x.focus();
+  mask.onkeydown = ev => {
+    if (ev.key !== 'Tab') return;
+    const focusable = [...m.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+    if (!focusable.length) { ev.preventDefault(); m.focus(); return; }
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+  };
   return m;
 }
 function closeModal() {
   const mask = document.getElementById('modalMask');
   mask.classList.remove('on');
   mask.innerHTML = '';
+  mask.removeAttribute('role');
+  mask.removeAttribute('aria-modal');
+  mask.removeAttribute('aria-label');
+  mask.onkeydown = null;
+  if (modalReturnFocus && modalReturnFocus.isConnected && typeof modalReturnFocus.focus === 'function') modalReturnFocus.focus();
+  modalReturnFocus = null;
 }
 
 if (typeof window !== 'undefined') {

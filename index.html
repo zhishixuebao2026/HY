@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#05060f">
 <title>花园：超限算力战争 · The Garden</title>
 <meta name="description" content="改编自「花园」系列设定集的超限层级卡牌对战游戏。从 ℵ₀ 攀升至『花园』，用层级压制与操作后继碾压对手。">
 <link rel="stylesheet" href="css/main.css">
@@ -23,7 +24,7 @@
       <h1>花园：超限算力战争</h1>
       <span class="sub">THE GARDEN</span>
     </div>
-    <nav class="navtabs">
+    <nav class="navtabs" aria-label="主导航">
       <button class="navtab on" data-view="home">首页</button>
       <button class="navtab" data-view="academy">序章 · 学院</button>
       <button class="navtab" data-view="battle">对战</button>
@@ -45,7 +46,7 @@
       <div class="arena-main">
 
         <!-- 对手状态 -->
-        <div class="pstat foe" id="pstatFoe"></div>
+        <div class="pstat foe" id="pstatFoe" role="button" tabindex="0" data-keyboard-control="true" aria-label="敌方状态，选择为攻击目标"></div>
 
         <div class="board-wrap">
           <!-- 对手战场 -->
@@ -69,7 +70,7 @@
         </div>
 
         <!-- 我方状态 -->
-        <div class="pstat mine" id="pstatMine"></div>
+        <div class="pstat mine" id="pstatMine" role="button" tabindex="0" data-keyboard-control="true" aria-label="我方状态，查看存在度与资源"></div>
 
         <!-- 手牌 -->
         <div class="hand-dock">
@@ -155,7 +156,7 @@
 </div><!-- /#app -->
 
 <!-- 通用容器 -->
-<div id="toastBox"></div>
+<div id="toastBox" role="status" aria-live="polite" aria-atomic="true"></div>
 <div id="modalMask" class="modal-mask"></div>
 <div id="endOverlay" class="overlay-end">
   <div class="end-box" id="endBox"></div>

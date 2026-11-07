@@ -172,11 +172,11 @@ const Battle = {
     const isMyTurn = s.current === this.myIdx && s.winner === null;
 
     if (this.mode === 'hotseat' || isMyTurn) {
-      // 延展：手牌中的卡同样享受层级抬升，卡面徽章直接显示加成后的层级
-      const hb = e.handTierBonus ? e.handTierBonus(this.myIdx) : 0;
+      // 延展与单卡临时加成均显示为实际可用层级。
       p.hand.forEach((cid, i) => {
         const def = CARD_MAP[cid];
-        const node = renderCard(def, hb ? { tier: def.tier + hb } : {});
+        const tier = e.handCardTier(this.myIdx, i);
+        const node = renderCard(def, tier !== def.tier ? { tier } : {});
         const playable = isMyTurn && e.canPlay(i);
         if (!playable) node.classList.add('unplayable');
         else node.classList.add('playable-glow');
@@ -184,7 +184,7 @@ const Battle = {
         node.dataset.handIdx = String(i);
         node.onclick = (ev) => { ev.stopPropagation(); this.onHandClick(i, node); };
         // 悬停详情
-        node.oncontextmenu = (ev) => { ev.preventDefault(); showCardDetail(def); };
+        node.oncontextmenu = (ev) => { ev.preventDefault(); showCardDetail(def, { tier }); };
         host.appendChild(node);
       });
     } else {
@@ -333,6 +333,7 @@ const Battle = {
           break;
         }
         case 'win': flashWhite(); break;
+        case 'draw': paradoxFlash(); break;
       }
     });
     q.length = 0;
@@ -348,6 +349,7 @@ const Battle = {
       const def = CARD_MAP[e.player(this.myIdx).hand[i]];
       let why = '无法打出';
       if (def.type === 'PARADOX' && !e.canPlayParadox(this.myIdx)) why = '悖论区未解锁 —— 需要「丰饶」关键词的卡在场';
+      else if (e.targetSpec(def) && !e.getValidTargets(e.targetSpec(def).filter, this.myIdx, e.handCardTier(this.myIdx, i), def).length) why = '没有合法目标，暂时无法打出';
       else if (e.player(this.myIdx).mana < e.effectiveCost(def, e.player(this.myIdx))) why = `算力不足（需要 ${e.effectiveCost(def, e.player(this.myIdx))} Ψ）`;
       else if (e.player(this.myIdx).board.length >= BOARD_LIMIT) why = '战场已满（上限 7）';
       else if (e.player(this.myIdx).opsThisTurn >= e.player(this.myIdx).opLimit) why = '本回合操作次数已被锁定';
@@ -368,6 +370,9 @@ const Battle = {
 
     // 多选一效果
     let ctx = {};
+    if ((def.effects || []).some(x => x.op === 'scryPick') && this.eng.player(this.myIdx).deck.length > 1) {
+      this.askScry(i); return;
+    }
     if ((def.effects || []).some(x => x.op === 'narrativeChoice')) {
       this.askNarrative(i); return;
     }
@@ -382,8 +387,42 @@ const Battle = {
       this.showTargetBanner();
       return;
     }
-    if (!r.ok) toast('无法打出该卡', 'warn');
+    if (!r.ok) toast(r.noTargets ? '没有合法目标，卡牌未消耗' : '无法打出该卡', 'warn');
     this.render();
+  },
+
+  askScry(i) {
+    const player = this.eng.player(this.myIdx);
+    const effect = CARD_MAP[player.hand[i]].effects.find(item => item.op === 'scryPick');
+    const count = Math.min(effect.n, player.deck.length);
+    if (count <= 1) {
+      const scryPickId = player.deck[0];
+      this.eng.playCard(i, null, scryPickId ? { scryPickId } : {});
+      this.render();
+      return;
+    }
+    const grid = el('div', 'choice-grid scry-grid');
+    const choices = player.deck.slice(0, count);
+    choices.forEach(cardId => {
+      const def = CARD_MAP[cardId];
+      const option = el('div', 'choice-card scry-choice');
+      option.appendChild(renderCard(def, { size: 'mini' }));
+      const info = el('div', 'scry-info');
+      info.appendChild(el('div', 'cc-t', def.name));
+      info.appendChild(el('div', 'cc-d', `费用 ${def.cost} Ψ · T${def.tier} ${TIERS[def.tier].symbol}<br>${def.text}`));
+      option.appendChild(info);
+      option.onclick = () => {
+        closeModal();
+        const result = this.eng.playCard(i, null, { scryPickId: cardId });
+        if (!result.ok) toast('无法打出该卡', 'warn');
+        this.render();
+      };
+      grid.appendChild(option);
+    });
+    const wrap = el('div');
+    wrap.appendChild(el('p', 'page-desc', `从牌库顶 ${count} 张中选择 1 张加入手牌，其余牌将洗回牌库。`));
+    wrap.appendChild(grid);
+    openModal('可测基数 · 选择一张牌', wrap);
   },
 
   askNarrative(i) {
@@ -452,7 +491,8 @@ const Battle = {
         let ctx = {};
         if ((def.effects || []).some(x => x.op === 'narrativeChoice')) { this.askNarrativeWithTarget(hi, u.uid); return; }
         if ((def.effects || []).some(x => x.op === 'transcendentalChoice')) { this.askTranscendentalWithTarget(hi, u.uid); return; }
-        e.playCard(hi, u.uid, ctx);
+        const result = e.playCard(hi, u.uid, ctx);
+        if (!result.ok) toast(result.noTargets ? '目标已失效，卡牌未消耗' : '该目标不再合法，卡牌未消耗', 'warn');
         this.render();
       } else toast('该单位不是合法目标', 'warn');
       return;
@@ -581,12 +621,13 @@ const Battle = {
     const s = this.eng.state;
     const box = document.getElementById('endBox');
     const ov = document.getElementById('endOverlay');
+    const draw = s.winner === 'draw';
     const won = s.winner === this.myIdx;
     const p = this.eng.player(this.myIdx);
     box.innerHTML = '';
-    box.appendChild(el('div', 'end-glyph', won ? '✿' : '◈'));
-    document.querySelector('.end-glyph').style.color = won ? '#fbbf24' : '#64748b';
-    box.appendChild(el('div', 'end-title' + (won ? '' : ' lose'), won ? '最终丰饶' : '归于虚无'));
+    box.appendChild(el('div', 'end-glyph', won ? '✿' : draw ? '◉' : '◈'));
+    document.querySelector('.end-glyph').style.color = won ? '#fbbf24' : draw ? '#c084fc' : '#64748b';
+    box.appendChild(el('div', 'end-title' + (draw ? ' draw' : won ? '' : ' lose'), won ? '最终丰饶' : draw ? '双生归虚' : '归于虚无'));
     box.appendChild(el('div', 'end-reason', s.winReason));
     const st = el('div', 'end-stats');
     [['回合数', s.turn], ['剩余存在度', Math.max(0, p.existence)], ['后继差', p.successorDelta], ['已归虚', p.graveyard.length]].forEach(([l, v]) => {
@@ -630,10 +671,11 @@ const Battle = {
 };
 
 /* ---------- 卡牌详情弹窗 ---------- */
-function showCardDetail(def) {
-  const tier = TIERS[def.tier];
+function showCardDetail(def, opts = {}) {
+  const tierId = Math.min(12, opts.tier == null ? def.tier : opts.tier);
+  const tier = TIERS[tierId];
   const wrap = el('div', 'card-detail-row');
-  const c = renderCard(def, { size: 'large' });
+  const c = renderCard(def, { size: 'large', ...(opts.tier == null ? {} : { tier: tierId }) });
   const holder = el('div');
   holder.appendChild(c);
   wrap.appendChild(holder);
@@ -641,7 +683,7 @@ function showCardDetail(def) {
   info.appendChild(el('h3', null, def.name));
   info.appendChild(el('div', 'en-name', def.en));
   const meta = el('div', 'detail-meta');
-  const tc = el('span', 'chip tier', `层级 ${def.tier} · ${tier.name} ${tier.symbol}`);
+  const tc = el('span', 'chip tier', `层级 ${tierId}${tierId !== def.tier ? '（加成后）' : ''} · ${tier.name} ${tier.symbol}`);
   tc.style.setProperty('--tier-color', tier.color);
   tc.style.borderColor = tier.color; tc.style.color = tier.color;
   meta.appendChild(tc);
