@@ -33,6 +33,20 @@ function fitGlyphs(root, sel) {
   scope.querySelectorAll(sel || '.tn-glyph, .cg-sym, .ls').forEach(n => fitGlyph(n));
 }
 
+/* ------------------------------------------------------------
+   页头横幅：各主视图统一的开场卷首（背景图为内联资源，见 build.js）
+   ------------------------------------------------------------ */
+function pageBanner(kind, title, en, sub) {
+  const wrap = el('div', 'page-banner page-banner-' + kind);
+  const copy = el('div', 'pb-copy');
+  if (en) copy.appendChild(el('div', 'pb-en', en));
+  if (title) copy.appendChild(el('div', 'pb-t', title));
+  if (sub) copy.appendChild(el('div', 'pb-s', sub));
+  wrap.appendChild(copy);
+  wrap.appendChild(el('div', 'pb-veil'));
+  return wrap;
+}
+
 /* ---------- 效果文本高亮 ---------- */
 const HL_WORDS = ['战吼','亡语','嘲讽','锐化','不可指定','丰饶','终焉','延展','封顶','进化','锁定','悖论','归虚','压制','抹除','免疫','搜寻','检视','复制','归虚','锁定'];
 function highlightText(t) {
@@ -91,6 +105,9 @@ function renderCard(def, opts = {}) {
   const nb = el('div', 'name-bar');
   const nameNode = el('span', 'card-name', def.name);
   nameNode.title = def.name;
+  // 长中文卡名（>7 字）自动降号，避免只剩「…Transcen」这种半截名
+  if (def.name.length >= 10) nameNode.classList.add('nm-xs');
+  else if (def.name.length >= 7) nameNode.classList.add('nm-s');
   nb.appendChild(nameNode);
   if (size === 'large' || size === 'huge') nb.appendChild(el('span', 'card-name-en', def.en || ''));
   frame.appendChild(nb);
@@ -396,7 +413,7 @@ function closeModal() {
 
 if (typeof window !== 'undefined') {
   Object.assign(window, {
-    el, renderCard, renderUnit, renderCardBack, initStardust,
+    el, renderCard, renderUnit, renderCardBack, initStardust, pageBanner,
     spawnParticles, spawnShockwave, flashWhite, paradoxFlash, centerOf, toast, openModal, closeModal, highlightText
   });
 }

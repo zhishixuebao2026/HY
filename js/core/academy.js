@@ -267,6 +267,9 @@ const Academy = {
     head.querySelector('.save-chip').id = 'academySaveChip';
     this.updateSaveChip();
 
+    head.appendChild(pageBanner('academy', '在算力之海，先学会呼吸。',
+      'ACADEMY · SEVEN LESSONS', '七课从零到结业：存在度 → 算力 → 战吼亡语 → 层级压制 → 锐化结构 → 后继差 → 毕业考核'));
+
     const info = el('div', 'page-desc');
     info.innerHTML = `共 <b style="color:var(--cyan)">${total}</b> 课，每课引入一个新机制并给你的牌组补几张新卡。
       从「只会召唤和打脸」一路学到<b style="color:var(--gold)">层级压制</b>与<b style="color:var(--gold)">后继碾压</b>。

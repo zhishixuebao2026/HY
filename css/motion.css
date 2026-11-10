@@ -40,11 +40,11 @@
   transition: transform .28s cubic-bezier(.34, 1.24, .64, 1), margin .28s;
 }
 .hand .card:hover {
-  transform: rotate(0deg) translateY(-30px) scale(1.18);
+  transform: rotate(0deg) translateY(-24px) scale(1.12);
   z-index: 60;
 }
 .hand .card.selected {
-  transform: rotate(0deg) translateY(-38px) scale(1.2);
+  transform: rotate(0deg) translateY(-30px) scale(1.14);
 }
 /* 悬停时两侧的手牌轻轻让开：整排硬定住会显得很僵，让位后才像「活」的一叠牌。
    用 ~ 选中后侧兄弟、:has(~ …) 选中前侧兄弟，纯 CSS 无需 JS。
@@ -334,10 +334,10 @@ button, [role="button"], .filter-chip, .ladder-step, .mode-card, .tower-node {
   .navtabs {
     flex: 1 0 100%; min-width: 0; width: 100%; margin: 0;
     overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
-    -webkit-overflow-scrolling: touch; gap: 3px;
+    -webkit-overflow-scrolling: touch; gap: 2px; justify-content: space-between;
   }
   .navtabs::-webkit-scrollbar { display: none; }
-  .navtab { flex: 0 0 auto; min-height: 36px; padding: 7px 12px; font-size: 12px; }
+  .navtab { flex: 0 0 auto; min-height: 32px; padding: 6px 10px; font-size: 11.5px; text-align: center; }
   .view-home { padding: 24px 15px calc(28px + env(safe-area-inset-bottom, 0px)); }
   .home-hero { margin-block: 0; }
   .home-visual { height: clamp(132px, 18vh, 158px); margin-bottom: 17px; border-radius: 15px; background-position: 64% center; }
@@ -362,12 +362,13 @@ button, [role="button"], .filter-chip, .ladder-step, .mode-card, .tower-node {
   .modal { width: min(100%, 780px); max-height: calc(100dvh - 20px); }
   .modal-body { overscroll-behavior: contain; }
   .end-box { width: min(100%, 560px); padding: 26px 18px; }
-  #toastBox { width: calc(100vw - 24px); }
+  #toastBox { width: calc(100vw - 20px); top: 132px; bottom: auto; }
+  .toast { font-size: 11.5px; line-height: 1.6; padding: 8px 14px; }
   .toast { max-width: 100%; text-align: center; }
 }
 
 @media (max-width: 560px) {
-  .navtab { padding-inline: 10px; font-size: 11px; }
+  .navtab { padding-inline: 7px; font-size: 11px; letter-spacing: 0; }
   .home-title { line-height: 1.22; }
   .home-en { letter-spacing: 2px; }
   .ladder-strip { height: 78px; margin-bottom: 18px; }
@@ -376,16 +377,26 @@ button, [role="button"], .filter-chip, .ladder-step, .mode-card, .tower-node {
   .mode-icon { font-size: 28px; margin-bottom: 7px; }
   .mode-title { font-size: 16px; }
   .arena { min-width: 0; }
-  .pstat { gap: 7px; padding: 6px 8px; flex-wrap: wrap; }
-  .avatar { width: 34px; height: 34px; flex-basis: 34px; border-radius: 9px; font-size: 16px; }
-  .pname { font-size: 12px; }
-  .pmeta { font-size: 9px; }
-  .exist { flex: 1 1 100%; min-width: 0; order: 3; gap: 6px; }
-  .exist-val { font-size: 16px; min-width: 29px; }
-  .mana { margin-left: auto; gap: 5px; }
-  .mana-label { font-size: 9px; }
-  .crystals { gap: 2px; }
-  .crystal { width: 10px; height: 13px; }
+  /* 窄屏英雄条：头像 + 名字 + 算力一行，存在度条独占一行 → 高度稳定不折行抖动 */
+  .pstat {
+    display: grid; grid-template-columns: 32px minmax(0, 1fr) auto;
+    grid-template-areas: "av name mana" "ex ex ex";
+    align-items: center; gap: 5px 8px; padding: 6px 9px;
+  }
+  .avatar { grid-area: av; width: 32px; height: 32px; flex-basis: 32px; border-radius: 9px; font-size: 15px; }
+  .pstat > div:not(.avatar):not(.exist):not(.mana):not(.succ-box) { grid-area: name; min-width: 0; }
+  .exist { grid-area: ex; min-width: 0; gap: 7px; }
+  .exist-val { font-size: 16px; min-width: 27px; }
+  .mana { grid-area: mana; gap: 5px; margin: 0; }
+  /* 窄屏不逐个画水晶（12 颗会挤掉名字），改成 Ψ 4/12 的数字表达 */
+  .mana .crystals { display: none; }
+  .mana-label { font-size: 11px; color: var(--cyan); font-weight: 700; letter-spacing: .5px; }
+  .mana-label:last-child { display: block; }
+  .mana-label:first-child { opacity: .55; }
+  .succ-box { grid-area: succ; gap: 4px; padding: 2px 6px; justify-self: end; }
+  .succ-lbl { display: none; }
+  .pname { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pmeta { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .succ-box { gap: 5px; padding: 3px 7px; }
   .succ-num { font-size: 14px; }
   .succ-track { width: 40px; }
@@ -393,24 +404,34 @@ button, [role="button"], .filter-chip, .ladder-step, .mode-card, .tower-node {
   .board { gap: 3px; padding: 5px 3px; }
   .card.board-card { --cw: clamp(62px, 18vw, 82px); }
   .slot-empty { width: clamp(62px, 18vw, 82px); height: auto; aspect-ratio: 8 / 11; }
-  .hand-dock { height: clamp(132px, 21vh, 162px); padding-bottom: 5px; }
+  /* 手牌区高度与底部操作条都用变量表达，提示条/浮层据此避让 */
+  .hand-dock { height: var(--hand-h); padding-bottom: 12px; }
   .hand { max-width: 100%; }
   .hand .card { --cw: clamp(74px, 21vw, 92px); margin-inline: -17px; }
   .hand .card:hover { margin-inline: -17px; }
-  .hand .card:hover { transform: translateY(-19px) scale(1.1); }
-  .hand .card.selected { transform: translateY(-22px) scale(1.1); }
-  .action-dock { right: 8px; bottom: calc(clamp(132px, 21vh, 162px) + 5px); gap: 5px; }
-  .action-dock .btn { padding: 7px 10px; font-size: 11px; }
-  .op-counter { font-size: 9px; padding: 3px 7px; }
-  .beam { width: min(430px, 78vw); }
-  .beam-title { font-size: 8px; letter-spacing: .6px; }
+  .hand .card:hover { transform: translateY(-16px) scale(1.07); }
+  .hand .card.selected { transform: translateY(-19px) scale(1.08); }
+  /* 窄屏：操作按钮改为底部常驻操作条 —— 浮层按钮会压住英雄状态条与手牌 */
+  .action-dock {
+    position: static; order: 9; flex-direction: row; align-items: center; min-height: var(--dock-h);
+    justify-content: center; flex-wrap: wrap; gap: 6px;
+    padding: 6px 9px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(0deg, rgba(6, 8, 16, .96), rgba(8, 10, 20, .82));
+    border-top: 1px solid var(--line);
+    z-index: 24;
+  }
+  .action-dock .btn { padding: 8px 13px; font-size: 11.5px; }
+  .op-counter { font-size: 9.5px; padding: 4px 8px; }
+  .hand-dock { height: var(--hand-h); }
+  .beam { width: min(480px, 84vw); }
+  .beam-title { font-size: 8px; letter-spacing: .8px; }
   .target-banner { max-width: calc(100vw - 24px); white-space: normal; text-align: center; font-size: 11px; }
   .detail-info { min-width: 0; }
   .end-title { font-size: 32px; letter-spacing: 4px; }
   .end-stats { gap: 10px; }
   .end-stat { min-width: 82px; }
   .coach-bar { top: calc(80px + env(safe-area-inset-top, 0px)); }
-  body.coach-on #toastBox { top: 134px; }
+  body.coach-on #toastBox { top: 134px; bottom: auto; }
 }
 
 @media (max-height: 560px) and (max-width: 860px) {
@@ -421,7 +442,7 @@ button, [role="button"], .filter-chip, .ladder-step, .mode-card, .tower-node {
   .exist { flex-basis: 40%; }
   .hand-dock { height: 118px; }
   .hand .card { --cw: clamp(66px, 16vh, 82px); }
-  .action-dock { bottom: 120px; }
+  .action-dock { bottom: 132px; }
 }
 
 @media (hover: none) {
@@ -432,4 +453,629 @@ button, [role="button"], .filter-chip, .ladder-step, .mode-card, .tower-node {
 
 @supports (height: 100dvh) {
   html, body, #app { height: 100dvh; }
+}
+
+/* ============================================================
+   17. 窄屏收尾（后置，确保覆盖前面所有分档规则）
+   ============================================================ */
+@media (max-width: 560px) {
+  .hand-dock { height: var(--hand-h); padding-bottom: 10px; }
+  .board { gap: 4px; padding: 6px 4px; }
+  .board.foe { padding-bottom: 2px; }
+  .board.mine { padding-top: 2px; }
+  .card.board-card { --cw: clamp(58px, 17.5vw, 76px); }
+  .beam { width: min(430px, 92vw); }
+  .beam-title { font-size: 7.5px; letter-spacing: .8px; }
+  .beam-cap { font-size: 10.5px; min-width: 16px; }
+  .beam-lbl { width: 14px; height: 14px; font-size: 8px; }
+  .beam-scale { gap: 5px; }
+  #successorBeam { flex-basis: 52px; height: 52px; }
+  .pstat { padding: 6px 10px; }
+  .sidebar { display: none; }
+  .op-counter { letter-spacing: 0; }
+}
+
+/* ============================================================
+   18. 竞技场氛围：中央层层回环，让空战场也不空
+   ============================================================ */
+.board-wrap::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  width: min(720px, 74vw); aspect-ratio: 1 / .40;
+  transform: translate(-50%, -50%);
+  pointer-events: none; z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center,
+    rgba(52, 225, 240, .055) 0%, rgba(96, 130, 220, .035) 42%, transparent 68%);
+}
+.board-wrap::before {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  width: min(520px, 54vw); aspect-ratio: 1 / .38;
+  transform: translate(-50%, -50%);
+  pointer-events: none; z-index: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(120, 150, 220, .13);
+  box-shadow: 0 0 0 1px rgba(52, 225, 240, .04), inset 0 0 50px rgba(52, 225, 240, .05);
+  animation: arenaBreathe 9s ease-in-out infinite;
+}
+@keyframes arenaBreathe {
+  0%, 100% { opacity: .45; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: .9;  transform: translate(-50%, -50%) scale(1.04); }
+}
+
+@media (max-width: 560px) {
+  /* 窄屏提示条：贴在手牌区上沿内侧，只压住卡面最上一条留白，
+     不会盖住英雄栏 / 存在度 / 操作按钮 */
+  #toastBox {
+    top: auto; bottom: calc(var(--dock-h) + var(--hand-h) - 26px);
+    width: calc(100vw - 16px);
+  }
+  #toastBox .toast {
+    font-size: 11px; line-height: 1.5; padding: 6px 14px;
+    max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    animation: toastDown .3s cubic-bezier(.2,.9,.3,1);
+  }
+  /* 窄屏一次只留最新一条：叠两条会顶到英雄栏上 */
+  #toastBox .toast:not(:last-child) { display: none; }
+  /* 教学时引导条已在顶部，toast 仍留在手牌上沿，避免两层叠在英雄栏上 */
+  body.coach-on #toastBox { top: auto; bottom: calc(var(--dock-h) + var(--hand-h) - 26px); }
+  .board-wrap::before { width: 92vw; }
+  .board-wrap::after { width: 108vw; }
+}
+
+/* ============================================================
+   19. 战场信息层：回合指示 / 对手手牌 / 空场提示
+   ============================================================ */
+.turn-badge {
+  display: none;
+  align-items: center; gap: 8px; flex: 0 1 auto; min-width: 0;
+  padding: 5px 15px 5px 12px; border-radius: 999px;
+  font-size: 11px; letter-spacing: .6px;
+  background: rgba(8, 11, 24, .8);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, .45);
+  transition: border-color .3s, box-shadow .3s, color .3s;
+  white-space: nowrap; overflow: hidden;
+}
+body[data-view="battle"] .turn-badge { display: inline-flex; }
+.turn-badge i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--txt-mut); flex: 0 0 7px;
+}
+.turn-badge b { color: var(--txt); font-weight: 700; font-family: var(--font-num); letter-spacing: .5px; }
+.turn-badge span { color: var(--txt-dim); }
+.turn-badge.mine {
+  border-color: rgba(52, 225, 240, .6);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .5), 0 0 26px rgba(52, 225, 240, .28);
+}
+.turn-badge.mine i { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); animation: turnPulse 1.6s ease-in-out infinite; }
+.turn-badge.mine span { color: var(--cyan); font-weight: 700; }
+.turn-badge.foe { border-color: rgba(167, 139, 250, .5); }
+.turn-badge.foe i { background: var(--violet); box-shadow: 0 0 10px var(--violet); animation: turnPulse 1.6s ease-in-out infinite; }
+.turn-badge.foe span { color: var(--violet); }
+.turn-badge.over { opacity: .55; }
+@keyframes turnPulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+/* 对手手牌：一叠斜插的卡背剪影 */
+.foe-hand { display: flex; align-items: center; flex: 0 0 auto; padding-left: 6px; }
+.foe-hand .fh {
+  display: block; width: 11px; height: 17px; border-radius: 2px;
+  margin-left: -6px;
+  background: linear-gradient(160deg, #1b2a56, #080d1c 72%);
+  border: 1px solid rgba(120, 160, 255, .4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .55), inset 0 0 6px rgba(56, 189, 248, .18);
+  transform: rotate(-6deg);
+  animation: foeHandIn .42s cubic-bezier(.2,.9,.3,1) both;
+  animation-delay: calc(var(--i, 0) * 26ms);
+}
+.foe-hand .fh:first-child { margin-left: 0; }
+@keyframes foeHandIn { from { opacity: 0; transform: rotate(-6deg) translateY(-8px) scale(.7); } to { opacity: 1; transform: rotate(-6deg); } }
+.foe-hand .fh-more {
+  font-size: 9px; color: var(--txt-mut); font-family: var(--font-num); margin-left: 4px;
+}
+
+/* 空战场提示 */
+.board-hint {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none; z-index: 1;
+  display: flex; flex-direction: column; gap: 5px;
+  animation: hintIn .5s ease both;
+}
+.board-hint b {
+  font-family: var(--font-display); font-size: 14px; letter-spacing: 3px;
+  color: rgba(160, 180, 220, .34); font-weight: 400;
+}
+.board-hint span { font-size: 10.5px; letter-spacing: .8px; color: rgba(140, 160, 200, .26); }
+@keyframes hintIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* 我方回合：手牌区略微提亮，暗示可以操作 */
+body.my-turn .hand-dock { background: linear-gradient(0deg, rgba(10, 22, 34, .82), transparent 62%); }
+
+@media (max-width: 900px) {
+  .turn-badge { font-size: 10px; padding: 4px 11px 4px 9px; margin-left: auto; }
+  .turn-badge span { display: none; }
+  .foe-hand { display: none; }
+  .board-hint b { font-size: 12px; letter-spacing: 2px; }
+  .board-hint span { font-size: 9.5px; }
+}
+
+
+/* 窄屏对局区的可用高度：手牌区 / 底部操作条尺寸集中在这里 */
+@media (max-width: 900px) {
+  :root {
+    --hand-h: clamp(150px, 22vh, 186px);
+    --dock-h: 52px;
+  }
+}
+@media (max-width: 560px) {
+  :root { --hand-h: clamp(134px, 19vh, 164px); --dock-h: 48px; }
+}
+@media (max-height: 560px) and (max-width: 860px) {
+  :root { --hand-h: 116px; --dock-h: 44px; }
+}
+
+/* ============================================================
+   20. 窄屏对局信息层补强（手牌数量 / 场面提示 / 回合态）
+   ============================================================ */
+@media (max-width: 900px) {
+  /* 对手手牌在窄屏用一行小字代替卡背堆叠 */
+  .pstat .pmeta { font-size: 9px; letter-spacing: .2px; }
+  .pstat .pmeta b { color: #cfe0ff; }
+
+  /* 手牌区上方留出一条细提示带，避免卡牌与英雄栏贴死 */
+  .hand-dock::before {
+    content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(52,225,240,.22), rgba(167,139,250,.2), transparent);
+  }
+
+  /* 空场面提示更克制 */
+  .board-hint { font-size: 10px; padding: 6px 12px; }
+
+  /* 我方回合时给英雄栏一条流光，明确「现在轮到你」 */
+  body.my-turn .pstat.mine { box-shadow: inset 0 0 0 1px rgba(52,225,240,.32), 0 0 24px rgba(52,225,240,.12); }
+  body.my-turn .pstat.mine .avatar { animation: myTurnPulse 2.4s ease-in-out infinite; }
+}
+@keyframes toastDown {
+  from { opacity: 0; transform: translateY(-12px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes myTurnPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52,225,240,.45), inset 0 0 12px rgba(52,225,240,.25); }
+  50% { box-shadow: 0 0 0 5px rgba(52,225,240,0), inset 0 0 18px rgba(52,225,240,.5); }
+}
+
+/* 窄屏手牌：卡名两行，避免长名被截成半截 */
+@media (max-width: 900px) {
+  .hand .card .name-bar {
+    display: flex; align-items: center; justify-content: center;
+    position: static; flex: 0 0 auto; padding: 3px 4px 2px; text-align: center;
+    background: none; border: 0;
+  }
+  /* 窄屏手牌只保留「名 + 类型 + 攻血」，插画留最大比例 */
+  .hand .card .card-art { flex: 1 1 auto; min-height: 34px; }
+  .hand .card .card-name {
+    white-space: normal; display: -webkit-box; -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2; line-height: 1.12; overflow: hidden;
+  }
+  .board .card.board-card .card-name {
+    white-space: normal; display: -webkit-box; -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2; line-height: 1.1; overflow: hidden;
+  }
+}
+
+
+/* ============================================================
+   21. 窄屏顶栏收束：品牌 + 回合徽章一行，导航一行（不再被挤出屏幕）
+   ============================================================ */
+@media (max-width: 720px) {
+  .topbar { padding: calc(5px + env(safe-area-inset-top, 0px)) 9px 6px; }
+  .brand h1 { font-size: 13px; letter-spacing: .6px; }
+  .brand .glyph { font-size: 17px; }
+  .navtabs {
+    padding: 3px; border-radius: 10px;
+  }
+  .navtab { min-height: 30px; padding: 5px 8px; font-size: 11px; }
+  body[data-view="battle"] .turn-badge {
+    margin-left: auto; padding: 3px 10px 3px 8px; font-size: 10px; gap: 5px;
+    order: 2;
+  }
+  body[data-view="battle"] .turn-badge span { display: none; }
+}
+@media (max-width: 420px) {
+  .navtab { padding: 5px 6.5px; font-size: 10.5px; letter-spacing: -.2px; }
+  .brand h1 { font-size: 12.5px; }
+}
+
+
+/* ============================================================
+   22. 手牌选中：浮起时不再盖住英雄栏
+   ============================================================ */
+@media (min-width: 901px) {
+  .hand .card.selected {
+    transform: rotate(0deg) translateY(-30px) scale(1.14);
+    z-index: 60;
+  }
+  /* 手牌区上沿留出浮起空间，选中卡不会顶到英雄栏 */
+  .hand-dock { padding-top: 6px; }
+}
+
+/* ============================================================
+   23. 横屏手机 / 矮窗口：把纵向空间还给战场
+   横屏时高度是最稀缺的资源，顶栏与手牌区必须压到最小，
+   否则双方战场只剩二十几像素，卡牌会整体溢出到英雄栏上。
+   ============================================================ */
+@media (max-height: 560px) and (max-width: 980px) {
+  :root {
+    --hand-h: 92px; --dock-h: 36px;
+    /* 场上一张小卡的宽度：由「扣除固定外框后剩下的高度」反推，保证两排卡都完整可见 */
+    --bcw: clamp(24px, calc((100vh - 288px) / 2 / 1.42), 54px);
+  }
+
+  /* 顶栏收成一行：品牌 + 导航同排 */
+  .topbar {
+    flex-wrap: nowrap; gap: 8px;
+    padding: calc(3px + env(safe-area-inset-top, 0px)) 8px 4px;
+  }
+  .brand h1 { font-size: 12px; letter-spacing: .3px; }
+  .brand .glyph { font-size: 15px; }
+  .navtabs {
+    flex: 1 1 auto; min-width: 0; width: auto; margin-left: auto;
+    overflow-x: auto; scrollbar-width: none; padding: 2px; gap: 1px;
+  }
+  .navtabs::-webkit-scrollbar { display: none; }
+  .navtab { min-height: 26px; padding: 3px 8px; font-size: 10.5px; }
+  body[data-view="battle"] .turn-badge { padding: 2px 8px 2px 6px; font-size: 9.5px; }
+
+  /* 英雄条压扁：只留名字 + 存在度 + 算力 */
+  .pstat { padding: 2px 8px; gap: 6px; min-height: 36px; }
+  .avatar { width: 24px; height: 24px; flex-basis: 24px; font-size: 11px; border-radius: 7px; }
+  .pname { font-size: 11px; }
+  .pmeta { display: none; }
+  .exist-val { font-size: 14px; min-width: 22px; }
+  .exist-bar { height: 5px; }
+  .mana .crystals { display: none; }
+  .mana-label { font-size: 10.5px; }
+  .succ-track { width: 46px; }
+
+  /* 战场：卡牌按「剩余高度」缩放，两排都留在中线两侧 */
+  .board-wrap { min-height: 0; flex: 1 1 auto; overflow: hidden; }
+  .board { padding: 1px 6px; gap: 5px; align-items: center; flex: 1 1 0; min-height: 0; overflow: hidden; }
+  .card.board-card { --cw: var(--bcw); }
+  .card.board-card .text-box { display: none; }
+  .card.board-card .kw-tags { display: none; }
+  /* 留一条极窄的插画带顶住层级徽章，名字就不会被徽章压住 */
+  .card.board-card .card-art { flex: 0 0 13px; min-height: 13px; }
+  .card.board-card .tier-badge { min-width: 17px; height: 16px; font-size: 9px; padding: 0 3px; border-radius: 0 7px 0 6px; }
+  .card.board-card .tier-badge.sym-md, .card.board-card .tier-badge.sym-lg { font-size: 8px; }
+  .card.board-card .tier-badge.sym-xl { font-size: 7px; }
+  .card.board-card .name-bar { padding: 1px 3px; }
+  .card.board-card .card-name { font-size: 7.6px; line-height: 1.12; letter-spacing: 0; }
+  .card.board-card .type-line { font-size: 6.4px; letter-spacing: .4px; padding: 0.5px 0; }
+  .card.board-card .stats { height: 14px; font-size: 9.5px; }
+  .slot-empty { width: var(--bcw); height: auto; aspect-ratio: 8 / 11; }
+  .board-hint b { font-size: 11px; letter-spacing: 1.5px; }
+  .board-hint span { display: none; }
+
+  /* 后继天平压薄 */
+  #successorBeam { flex-basis: 30px; height: 30px; }
+  .beam { height: 30px; width: min(560px, 74vw); }
+  .beam-title { display: none; }
+  .beam-scale { top: 6px; height: 18px; gap: 6px; }
+  .beam-cap { font-size: 11.5px; min-width: 15px; }
+  .beam-lbl { width: 12px; height: 12px; font-size: 7px; }
+
+  /* 手牌：小卡、扇形收敛 */
+  .hand-dock { height: var(--hand-h); padding-bottom: 3px; }
+  .hand { padding-top: 4px; }
+  /* 横屏手牌不必扇形叠压：横向空间充裕，让每张牌的名字都完整可见 */
+  .hand .card { --cw: clamp(42px, 6.6vw, 54px); margin-inline: -2px; }
+  .hand .card:hover { margin-inline: -2px; transform: translateY(-8px) scale(1.06); }
+  .hand .card .text-box, .hand .card .kw-tags, .hand .card .type-line { display: none; }
+  .hand .card .stats { height: 15px; font-size: 10px; }
+  .hand .card .name-bar { padding: 1px 3px; }
+  .hand .card .card-name { font-size: 8px; }
+
+  /* 操作条回到流内，右侧只留一个不遮挡的窄条 */
+  .action-dock {
+    position: static; order: 9; flex-direction: row; align-items: center;
+    justify-content: flex-end; gap: 6px; min-height: var(--dock-h);
+    padding: 3px 8px calc(3px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(0deg, rgba(6, 8, 16, .94), rgba(8, 10, 20, .6));
+    border-top: 1px solid var(--line);
+  }
+  .action-dock .btn { padding: 5px 12px; font-size: 11px; }
+  .action-dock .op-counter { font-size: 9px; padding: 2px 8px; }
+  .dock-tip { display: none; }
+  .sidebar { display: none; }
+
+  /* 提示条落在手牌上方，不压任何信息 */
+  /* 横屏提示条：横向居中仍是空的（手牌是扇形收窄的），用单行胶囊最省地方 */
+  /* 横屏提示条：落到屏幕正中（后继天平那一条空带上），既压不到手牌也压不到英雄栏 */
+  /* 横屏提示条：操作条左侧本来就是空的，直接落在那里，谁都不压 */
+  #toastBox {
+    top: auto; left: 10px; right: auto; transform: none;
+    align-items: flex-start; bottom: 6px; width: auto; max-width: 56vw;
+  }
+  #toastBox .toast {
+    font-size: 10px; padding: 3px 14px; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 100%; line-height: 1.5;
+  }
+  /* 横屏引导条：钻进底部操作条左半边的空位，一行排开，不压英雄栏 / 战场 / 手牌 */
+  .coach-bar {
+    top: auto; bottom: 5px; left: 8px; transform: none;
+    flex-wrap: nowrap; gap: 6px; padding: 3px 9px;
+    max-width: min(360px, 44vw); border-radius: 999px;
+    z-index: 25; animation: none;
+  }
+  .coach-bar .cb-lesson { font-size: 9.5px; padding: 2px 7px; white-space: nowrap; }
+  .coach-bar .cb-goal { display: none; }
+  .coach-bar .cb-goal-toggle { display: inline-flex; }
+  .coach-bar .cb-step {
+    font-size: 9.5px; flex: 1 1 auto; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .coach-bar .cb-btn { font-size: 9px; padding: 2px 7px; white-space: nowrap; }
+  .coach-bar.show-goal {
+    flex-wrap: wrap; max-width: min(460px, 60vw); border-radius: 12px;
+  }
+  .coach-bar.show-goal .cb-goal { display: block; flex: 1 1 100%; font-size: 10px; }
+  /* 教学进行时隐藏 toast：目标已由引导条常驻显示，叠两层反而挡住战场 */
+  body.coach-on #toastBox { display: none; }
+}
+
+/* ============================================================
+   24. 矮窗口（横屏手机 / 小笔记本）：各页卷首横幅收成一条
+   ============================================================ */
+@media (max-height: 560px) {
+  .page-banner { height: 58px !important; margin-bottom: 8px; border-radius: 10px; }
+  .pb-copy { padding-inline: 16px; }
+  .pb-en { font-size: 7px; letter-spacing: 1.6px; margin-bottom: 3px; }
+  .pb-t { font-size: 15px; letter-spacing: 1.6px; margin-bottom: 0; }
+  .pb-s { display: none; }
+  .builder-banner { padding: 8px 10px 0; }
+  .builder-banner .page-banner { height: 48px !important; }
+  .th-row + .page-banner { margin-top: 8px; }
+  .view-codex > .page-banner { height: 54px !important; margin-bottom: 6px; }
+  .codex-bar { padding-top: 4px; gap: 5px; }
+  .codex-search { padding: 5px 12px; font-size: 11px; }
+  .filter-chip { padding: 3px 9px; font-size: 10px; }
+  .codex-group-head { margin: 8px 0 6px; }
+  /* 横屏首页：横幅与标题同屏出现，不把标题挤到第二屏 */
+  .home-visual { height: 104px !important; margin-bottom: 10px; }
+  .home-visual-title { font-size: 20px; }
+  .home-visual-kicker { font-size: 7px; letter-spacing: 1.4px; }
+  .home-visual-meta { font-size: 9.5px; }
+  .home-title { font-size: 30px !important; margin-bottom: 6px; }
+  .home-en { font-size: 8.5px; letter-spacing: 3px; margin-bottom: 8px; }
+  .home-tagline { margin-bottom: 12px; font-size: 11.5px; line-height: 1.7; padding-inline: 12px; }
+  .home-tagline br { display: none; }
+  .ladder-strip { height: 72px; margin-bottom: 14px; }
+}
+
+/* ============================================================
+   25. 横屏手机：组牌 / 图鉴页竖向压缩（首屏就要看见卡）
+   横屏时 logo 横幅 + 页头 + 筛选条会吃掉整屏，卡池一张都露不出来。
+   ============================================================ */
+@media (max-height: 560px) and (max-width: 980px) {
+  /* 组牌页：横幅缩到一条，页头与筛选条并成紧凑面板 */
+  .builder-banner { padding: 6px 8px 0; }
+  .builder-banner .page-banner { height: 44px !important; margin-bottom: 0; }
+  .builder-banner .pb-en { display: none; }
+  .builder-banner .pb-t { font-size: 13px; letter-spacing: 1.2px; }
+
+  .deck-builder {
+    grid-template-columns: minmax(0, 1fr) 262px;
+    gap: 12px; padding: 8px 10px 10px;
+  }
+  .deck-head { margin-bottom: 6px; align-items: center; gap: 8px; }
+  .deck-head .page-title { font-size: 15px; letter-spacing: 1.6px; margin-bottom: 0; }
+  .deck-head .page-desc { display: none; }
+  .deck-head .btn-row { gap: 5px; }
+  .deck-head .btn { padding: 4px 9px; font-size: 10.5px; }
+
+  .pool-bar { gap: 5px 8px; padding: 5px 7px; margin-bottom: 7px; border-radius: 9px; }
+  .pool-bar .codex-search { max-width: 200px; padding: 4px 10px; font-size: 11px; }
+  .pool-bar .filter-chip { padding: 2px 8px; font-size: 10px; }
+  .pool-bar .pb-lbl { font-size: 9px; }
+  .pool-bar .pb-row { gap: 4px; }
+  .pool-grid { gap: 12px 10px; grid-template-columns: repeat(auto-fill, 78px); padding: 3px 3px 18px; }
+  .pool-grid .card { --cw: 78px; }
+  .pool-group { margin: 6px 0 4px; padding-block: 2px; }
+  .pool-group .pg-sym { width: 15px; height: 15px; font-size: 8px; }
+  .pool-group .pg-name { font-size: 10.5px; }
+  .pool-group .pg-count { font-size: 9.5px; }
+
+  .deck-panel { padding: 9px 10px 10px; }
+  .deck-panel .deck-head { margin-bottom: 6px; }
+  .deck-panel .page-title { font-size: 14px; letter-spacing: 1.6px; }
+  .deck-count { font-size: 11px; padding: 2px 9px; }
+  .deck-list { gap: 1px; }
+  .deck-row { padding-block: 2px; font-size: 10.5px; }
+  .deck-stats { padding-top: 7px; margin-top: 6px; }
+  .deck-actions { margin-top: 8px; gap: 5px; }
+  .deck-actions .btn { padding: 5px 10px; font-size: 10.5px; }
+
+  /* 图鉴页：搜索条 + 分组头压薄，卡片抬上来 */
+  .view-codex { padding-bottom: 8px; }
+  .codex-cards { gap: 10px 9px; }
+  .codex-group { gap: 8px; margin-bottom: 4px; }
+  .codex-group .cg-sym { width: 30px; height: 30px; flex-basis: 30px; font-size: 13px; }
+  .codex-group .cg-n { font-size: 12.5px; }
+  .codex-group .cg-d { font-size: 9.5px; line-height: 1.5; margin-top: 0; }
+
+  /* 规则页在横屏时同样紧一点 */
+  .rule-quick { gap: 6px; margin-bottom: 10px; }
+  .rq-cell { padding: 6px 9px; }
+  .rq-v { font-size: 16px; }
+  .rq-t { font-size: 9.5px; }
+  .rq-d { font-size: 9px; }
+  .rule-block { padding: 9px 12px; margin-bottom: 8px; }
+  .rule-block h4 { font-size: 12.5px; margin-bottom: 3px; }
+  .rule-block p { font-size: 11px; line-height: 1.75; }
+}
+
+/* ============================================================
+   26. 横屏手机：学院 / 超限阶梯的首屏也要露出第一层
+   ============================================================ */
+@media (max-height: 560px) and (max-width: 980px) {
+  .view-tower { padding-top: 6px; }
+  .tower-head { margin-bottom: 10px; }
+  .tower-head .page-title { font-size: 17px; letter-spacing: 1.6px; margin-bottom: 4px; }
+  .tower-head .page-desc { font-size: 10.5px; line-height: 1.65; }
+  .tower-head .page-banner { height: 44px !important; margin: 6px 0; }
+  .tower-head .page-banner .pb-en { display: none; }
+
+  .climb-rail { margin-top: 8px; padding: 8px 12px 7px; }
+  .cr-top { margin-bottom: 5px; }
+  .cr-lb { font-size: 8.5px; letter-spacing: 1.8px; }
+  .cr-v { font-size: 11.5px; }
+  .cr-track { height: 6px; }
+  .cr-ticks { margin-top: 6px; gap: 3px; }
+
+  .tower-head .detail-meta { margin-top: 6px; gap: 6px; }
+  .tower-head .detail-meta .chip { font-size: 9.5px; padding: 2px 9px; }
+
+  .tower-path { gap: 8px; padding-bottom: 24px; }
+  .tower-node { gap: 10px; padding: 8px 12px; border-radius: 11px; }
+  .tower-node::before { left: 30px; top: -8px; height: 8px; }
+  .tn-glyph { width: 34px; height: 34px; flex-basis: 34px; font-size: 16px; border-radius: 9px; }
+  .tn-title { font-size: 12.5px; margin-bottom: 2px; }
+  .tn-sub { font-size: 9.5px; line-height: 1.5; }
+  .tn-tags { gap: 4px; }
+  .tn-tag { font-size: 9px; padding: 1px 7px; }
+  .tower-foot { gap: 6px; padding: 8px 0 12px; }
+  .tower-foot .btn { padding: 6px 12px; font-size: 11px; }
+}
+
+/* ============================================================
+   27. 竖屏手机战场：卡面太窄，正文挤成一条缝 —— 换成「插画条 + 名字」
+   68px 宽的小卡放四行 8px 正文，实际只能显示两行半，还看不出这是什么牌。
+   改为：一条窄插画 + 两行名字 + 数值，一瞥就能认出单位。
+   ============================================================ */
+@media (max-width: 560px) and (min-height: 561px) {
+  .card.board-card .card-art { flex: 0 0 42px; min-height: 42px; }
+  .card.board-card .text-box { display: none; }
+  .card.board-card .type-line { display: none; }
+  .card.board-card .kw-tags { display: none; }
+  .card.board-card .name-bar { padding: 2px 4px; }
+  .card.board-card .card-name { font-size: 8.6px; line-height: 1.24; }
+  .card.board-card .stats { height: 21px; font-size: 11.5px; }
+  .board.sparse .card.board-card .card-art { flex: 0 0 54px; min-height: 54px; }
+  .slot-empty { aspect-ratio: 8 / 11; }
+  /* 手牌也统一：插画 + 名字，正文留给详情弹窗 */
+  .hand .card .card-art { flex: 0 0 44px; min-height: 44px; }
+}
+
+/* ============================================================
+   28. 竖屏手机顶栏：两行导航吃掉 50px，改成单行可横滑
+   战场在 390×844 上本来就只有 ~500px 可用高度，顶栏两行太奢侈。
+   ============================================================ */
+@media (max-width: 560px) {
+  .topbar {
+    flex-wrap: nowrap; gap: 8px;
+    height: 46px; flex: 0 0 46px;
+    padding: calc(2px + env(safe-area-inset-top, 0px)) 10px 3px;
+  }
+  .brand { flex: 0 0 auto; gap: 7px; }
+  .brand .glyph { font-size: 17px; }
+  .brand h1 { font-size: 13px; letter-spacing: .8px; }
+  .navtabs {
+    flex: 0 1 auto; min-width: 0; margin-left: auto;
+    overflow-x: auto; scrollbar-width: none; padding: 2px; gap: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .navtabs::-webkit-scrollbar { display: none; }
+  .navtab { flex: 0 0 auto; padding: 5px 6px; font-size: 10px; letter-spacing: 0; min-height: 28px; border-radius: 8px; }
+  .view { padding-top: 10px; }
+}
+
+/* 窄屏导航的短标签：桌面/横屏用全称，竖屏用两字缩写 */
+.navtab .nt-short { display: none; }
+@media (max-width: 560px), (max-height: 560px) and (max-width: 980px) {
+  .navtab .nt-long { display: none; }
+  .navtab .nt-short { display: inline; }
+}
+@media (max-width: 430px) {
+  .brand h1 { font-size: 12px; letter-spacing: .3px; }
+  .navtab { padding: 5px 5px; font-size: 9.8px; }
+}
+
+/* 竖屏顶栏：回合徽章挪到第二行（绝对定位到导航下方），导航就能一行排开 */
+@media (max-width: 560px) {
+  .topbar { position: relative; }
+  body[data-view="battle"] .turn-badge {
+    position: absolute; left: 10px; top: 100%;
+    margin-top: 6px; z-index: 41; pointer-events: none;
+    padding: 3px 11px 3px 9px; font-size: 10px;
+    border-radius: 999px;
+  }
+  body[data-view="battle"] .turn-badge i { width: 6px; height: 6px; flex-basis: 6px; }
+  body[data-view="battle"] .arena-main, body[data-view="battle"] .arena { padding-top: 30px; }
+}
+
+/* ============================================================
+   29. 窄屏卡池 / 图鉴：小卡名字允许两行，别用省略号吃掉半个卡名
+   78px 宽的池卡内部只有 62px，六字卡名（康托尔对角线）会直接溢出。
+   ============================================================ */
+@media (max-width: 640px) {
+  .pool-grid .card-name,
+  .codex-cards .card-name {
+    white-space: normal;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; line-height: 1.18;
+    overflow-wrap: anywhere; word-break: break-word;
+  }
+  .pool-grid .name-bar, .codex-cards .name-bar { padding: 2px 3px; }
+}
+
+/* ============================================================
+   30. 竖屏结算：四项数据在窄屏会折成「3 + 1」，压成 2×2 更整齐
+   ============================================================ */
+@media (max-width: 560px) {
+  .end-box { padding: 26px 16px 22px; }
+  .end-glyph { font-size: 52px; }
+  .end-title { font-size: 34px; letter-spacing: 6px; }
+  .end-reason { font-size: 11.5px; line-height: 1.6; margin-bottom: 16px; }
+  .end-stats {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 8px; width: 100%; max-width: 300px; margin: 0 auto;
+  }
+  .end-stat { min-width: 0; padding: 7px 6px; }
+  .end-stat .v { font-size: 21px; }
+  .end-stat .l { font-size: 9.5px; letter-spacing: .6px; }
+  .end-btns { gap: 8px !important; margin-top: 16px; }
+  .end-btns .btn { flex: 1 1 0; min-width: 0; padding: 9px 10px; font-size: 12px; }
+}
+
+/* 结算弹层展开时把提示条藏起来：结算画面自带全部信息，边角留一条旧 toast 显得脏 */
+body:has(.overlay-end.on) #toastBox { display: none; }
+
+/* 图鉴小卡（窄卡）同样允许两行名字，长卡名不靠省略号 */
+@media (max-width: 1180px) {
+  .codex-cards .card-name {
+    white-space: normal;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; line-height: 1.2;
+    overflow-wrap: anywhere; word-break: break-word;
+  }
+}
+
+/* 卡池小卡（92px 宽、内部仅 70px）：长卡名同样允许两行 */
+.pool-grid .card-name {
+  white-space: normal;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; line-height: 1.18;
+  overflow-wrap: anywhere; word-break: break-word;
+}
+
+/* 横屏图鉴 / 卡池的小卡（≤54px）：超长卡名用两行 + 省略号兜底 */
+@media (max-height: 560px) and (max-width: 980px) {
+  .codex-cards .card-name, .pool-grid .card-name {
+    white-space: normal;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; line-height: 1.14; font-size: 7.4px;
+    overflow-wrap: anywhere; word-break: break-word;
+  }
 }

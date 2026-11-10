@@ -56,6 +56,7 @@ const Battle = {
     this.renderBoard(0, document.getElementById('boardMine'));
     this.renderHand();
     this.renderBeam();
+    this.renderTurnBadge();
     this.renderActions();
     this.renderLog();
     this.applyRemovals();
@@ -113,6 +114,20 @@ const Battle = {
       host.appendChild(mn);
     }
 
+    // 对手手牌背面（信息增量：能直观看到对手还有几张牌）
+    if (!isMe) {
+      const fh = el('div', 'foe-hand');
+      fh.title = `对手手牌 ${p.hand.length} 张`;
+      const n = Math.min(12, p.hand.length);
+      for (let i = 0; i < n; i++) {
+        const b = el('i', 'fh');
+        b.style.setProperty('--i', i);
+        fh.appendChild(b);
+      }
+      if (p.hand.length > n) fh.appendChild(el('span', 'fh-more', '+' + (p.hand.length - n)));
+      host.appendChild(fh);
+    }
+
     // 后继
     const sc = el('div', 'succ-box');
     sc.appendChild(el('div', 'succ-num', String(p.successorDelta)));
@@ -131,6 +146,8 @@ const Battle = {
     const e = this.eng, p = e.player(idx);
     host.innerHTML = '';
     host.classList.toggle('full', p.board.length >= BOARD_LIMIT);
+    // 场面空时放大卡牌，避免大片留白
+    host.classList.toggle('sparse', p.board.length > 0 && p.board.length <= 3);
     for (const u of p.board) {
       const node = renderUnit(u);
       const isMine = idx === this.myIdx;
@@ -154,6 +171,14 @@ const Battle = {
 
       node.onclick = (ev) => { ev.stopPropagation(); this.onUnitClick(u); };
       host.appendChild(node);
+    }
+    // 空战场提示：避免上半屏一片漆黑，也给新手一句引导
+    if (!p.board.length) {
+      const hint = el('div', 'board-hint',
+        idx === this.myIdx
+          ? '<b>你的战场是空的</b><span>点击手牌 → 再点此处的空槽即可召唤</span>'
+          : '<b>对手尚未布阵</b><span>层级压制与后继差，是通往胜利的两条路</span>');
+      host.appendChild(hint);
     }
     // 空槽
     const emptyN = Math.max(0, Math.min(BOARD_LIMIT, 5) - p.board.length);
@@ -193,6 +218,19 @@ const Battle = {
     }
   },
 
+  /* ---------- 回合指示 / 阶段提示 ---------- */
+  renderTurnBadge() {
+    const e = this.eng, s = e.state;
+    const host = document.getElementById('turnBadge');
+    if (!host) return;
+    const running = s.winner === null;
+    const mine = running && s.current === this.myIdx;
+    host.className = 'turn-badge' + (mine ? ' mine' : running ? ' foe' : ' over');
+    const who = mine ? '轮 到 你' : (s.players[s.current] ? s.players[s.current].name + ' 的回合' : '对局结束');
+    host.innerHTML = '<i></i><b>第 ' + s.turn + ' 回合</b><span>' + who + '</span>';
+    document.body.classList.toggle('my-turn', mine);
+  },
+
   /* ---------- 后继天平 ---------- */
   renderBeam() {
     const e = this.eng;
@@ -200,8 +238,14 @@ const Battle = {
     const tot = Math.max(SUCCESSOR_WIN, a + b);
     document.getElementById('beamL').style.width = (a / tot * 50) + '%';
     document.getElementById('beamR').style.width = (b / tot * 50) + '%';
-    document.getElementById('beamCapL').textContent = a;
-    document.getElementById('beamCapR').textContent = b;
+    const capL = document.getElementById('beamCapL');
+    const capR = document.getElementById('beamCapR');
+    capL.textContent = a;
+    capR.textContent = b;
+    capL.classList.toggle('hot', a >= SUCCESSOR_WIN - 3);
+    capR.classList.toggle('hot', b >= SUCCESSOR_WIN - 3);
+    const beam = document.querySelector('#successorBeam .beam');
+    if (beam) beam.style.setProperty('--lead', a >= b ? 'l' : 'r');
   },
 
   /* ---------- 操作区 ---------- */
@@ -236,15 +280,24 @@ const Battle = {
       host.appendChild(b);
     } else if (isMyTurn) {
       const canAsc = p.board.some(u => e.canAscend(u.uid));
-      const ba = el('button', 'btn sm ' + (canAsc ? 'gold' : ''), `⚡ 幂集跃迁 (${ASCEND_COST}Ψ)`);
-      ba.disabled = !canAsc;
-      ba.title = '消耗 2 算力使一个单位层级 +1（每张卡最多 3 次）';
-      ba.onclick = () => { this.sel = { kind: 'ascend' }; this.render(); };
-      host.appendChild(ba);
-
-      const be = el('button', 'btn primary', '结束回合 →');
+      // 回合没结束时禁掉「结束回合」以外的误触，并把下一步该做什么直接写在按钮上
+      const noMana = p.mana <= 0;
+      const be = el('button', 'btn primary end-turn', '结束回合 →');
       be.onclick = () => this.endTurn();
-      host.appendChild(be);
+
+      if (p.opsThisTurn === 0) {
+        // 开局/回合初引导：先出牌，再考虑跃迁
+        const tip = el('div', 'dock-tip', noMana ? '算力已耗尽' : '出牌或攻击后，再结束回合');
+        host.appendChild(tip);
+        host.appendChild(be);
+      } else {
+        const ba = el('button', 'btn sm ' + (canAsc ? 'gold' : ''), `⚡ 幂集跃迁 (${ASCEND_COST}Ψ)`);
+        ba.disabled = !canAsc;
+        ba.title = '消耗 2 算力使一个单位层级 +1（每张卡最多 3 次）';
+        ba.onclick = () => { this.sel = { kind: 'ascend' }; this.render(); };
+        host.appendChild(ba);
+        host.appendChild(be);
+      }
     }
   },
 
@@ -469,12 +522,23 @@ const Battle = {
     if (old) old.remove();
     const b = el('div', 'target-banner');
     const label = { allyEntity: '选择一个友方实体', enemyEntity: '选择一个敌方实体', enemyStructure: '选择一个敌方结构', enemyUnit: '选择一个敌方单位', allyUnit: '选择一个友方单位', anyUnit: '选择一个单位' }[this.targeting.filter] || '选择一个目标';
-    b.innerHTML = `${label} <span class="esc">Esc 取消</span>`;
+    const n = (this.targeting.valid || []).length;
+    b.innerHTML = `<i class="tb-dot"></i><span class="tb-t">${label}</span>`
+      + `<span class="tb-n">可指定 ${n} 个目标</span>`
+      + `<span class="esc">Esc 取消</span>`;
     document.querySelector('.arena-main').appendChild(b);
+    // 同时给所有合法目标加一层脉冲高亮，玩家不用自己找
+    (this.targeting.valid || []).forEach(uid => {
+      const u = this.eng.findUnit(uid);
+      if (!u) return;
+      const node = document.querySelector(`.card[data-uid="${uid}"]`);
+      if (node) node.classList.add('valid-target');
+    });
   },
   clearBanner() {
     const b = document.querySelector('.target-banner');
     if (b) b.remove();
+    document.querySelectorAll('.card.valid-target').forEach(n => n.classList.remove('valid-target'));
   },
 
   onUnitClick(u) {
@@ -637,7 +701,7 @@ const Battle = {
       st.appendChild(d);
     });
     box.appendChild(st);
-    const btns = el('div');
+    const btns = el('div', 'end-btns');
     btns.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap';
     const isCourse = this.mode === 'tower' || this.mode === 'academy';
     const mainLabel = this.mode === 'academy'

@@ -76,6 +76,9 @@ test('standalone build embeds its styles, scripts and card art without network a
   for (const art of new Set(data.CARDS.filter(card => card.art).map(card => card.art))) {
     assert.match(imageMap[art] || '', /^data:image\/(?:webp|jpeg);base64,/, `standalone art ${art} is missing`);
   }
-  assert.equal((html.match(/data:image\/webp;base64,/g) || []).length, 16);
-  assert.equal((html.match(/data:image\/jpeg;base64,/g) || []).length, 5);
+  // 16 张卡牌 WebP + 20 张卡牌 JPEG(其中 4 张为 .jpg 源) + 5 张主视觉/页头横幅 JPEG
+  assert.equal((html.match(/data:image\/webp;base64,/g) || []).length, 26);
+  assert.equal((html.match(/data:image\/jpeg;base64,/g) || []).length, 9);
+  // 单文件版不得残留指向本地子目录的相对图片引用
+  assert.doesNotMatch(html, /url\('\.\.\/assets\/img\//);
 });

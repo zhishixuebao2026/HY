@@ -104,6 +104,12 @@ const Coach = {
     goal.innerHTML = '<i>目标</i>' + this.lesson.goal;
     bar.appendChild(goal);
 
+    // 窄屏：目标文案默认收起，只留一枚可点开的按钮，把高度让给战场
+    const gToggle = el('button', 'cb-btn cb-goal-toggle', '本关目标');
+    gToggle.title = '展开 / 收起本关目标';
+    gToggle.onclick = () => bar.classList.toggle('show-goal');
+    bar.appendChild(gToggle);
+
     if (this.handHeld) {
       const st = el('span', 'cb-step');
       st.id = 'coachStepTag';

@@ -114,6 +114,9 @@ const Tower = {
     head.querySelector('.save-chip').id = 'towerSaveChip';
     this.updateSaveChip();
 
+    head.appendChild(pageBanner('tower', '一级一级，直到花园在望。',
+      'ROGUELIKE ASCENT · TWELVE FLOORS', '从委员会文明一路攀升至『花园』，每层通关可择一张新卡强化牌组'));
+
     const info = el('div', 'page-desc');
     info.innerHTML = `从第 <b style="color:var(--cyan)">1</b> 层的委员会文明一路攀升至第 <b style="color:var(--gold)">${total}</b> 层的『花园』。每次通关可选取一张新卡加入牌组，存在度会在层间部分恢复。<b style="color:var(--green)">进度会自动写入本地存储，刷新或关闭页面都不会丢失。</b>`;
     head.appendChild(info);
@@ -181,8 +184,9 @@ const Tower = {
       tags.appendChild(el('span', 'tn-tag' + (f.boss ? ' boss' : ''), f.boss ? 'BOSS' : `T${f.tier}`));
       tags.appendChild(el('span', 'tn-tag', `${f.existence} 存在度`));
       if (cleared) tags.appendChild(el('span', 'tn-tag ok', '✓ 已通关'));
+      else if (current) tags.appendChild(el('span', 'tn-tag cur', '当前目标'));
       else if (locked) tags.appendChild(el('span', 'tn-tag', '未解锁'));
-      else tags.appendChild(el('span', 'tn-tag cur', '当前目标'));
+      else tags.appendChild(el('span', 'tn-tag', '可挑战'));
       node.appendChild(tags);
 
       if (!locked) node.onclick = () => this.enterFloor(i);
