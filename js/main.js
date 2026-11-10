@@ -5,6 +5,13 @@
 let currentView = 'home';
 
 function showView(name) {
+  // 离开对战视图时必须清掉教学引导层与目标横幅，否则它们会浮在其他页面上
+  if (currentView === 'battle' && name !== 'battle') {
+    if (typeof Coach !== 'undefined' && Coach.stop) Coach.stop();
+    if (typeof Battle !== 'undefined' && Battle.clearBanner) Battle.clearBanner();
+    const tb = document.querySelector('.target-banner');
+    if (tb) tb.remove();
+  }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
   const v = document.getElementById('view' + name[0].toUpperCase() + name.slice(1));
   if (v) v.classList.add('on');
@@ -14,6 +21,7 @@ function showView(name) {
     if (active) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
   });
   currentView = name;
+  document.body.dataset.view = name;
   if (name === 'codex') Codex.init();
   if (name === 'rules') Rulebook.init();
   if (name === 'builder') Builder.init();
@@ -75,26 +83,31 @@ function renderHome() {
   const cards = [
     {
       icon: '✎', color: '#38bdf8', title: '序章 · 超限学院', en: 'Academy · 7 Lessons', badge: '新课', id: 'academyCard',
+      meta: ['7 节课', '手把手引导', '进度自动保存'],
       desc: '七节课带你从零上手：存在度 → 算力 Ψ → 战吼亡语 → 层级压制 → 锐化结构 → 后继差 → 毕业考核。每课补几张新卡，第 1 课全程手把手。进度自动保存。',
       fn: () => showView('academy')
     },
     {
       icon: '⚔', color: '#22d3ee', title: '构筑对战', en: 'Constructed Battle', badge: null,
+      meta: ['3 套预组', 'AI 对手', '快节奏 15 回合'],
       desc: '选择一套牌组，与 AI 在 13 个超限层级上展开算力战争。抹除对方存在度，或累积 12 点后继差碾压取胜。',
       fn: () => openDeckSelect()
     },
     {
       icon: '✦', color: '#fbbf24', title: '超限阶梯', en: 'Roguelike Ascent', badge: '12 层',
+      meta: ['逐层强化', '通关择卡', '层间回血'],
       desc: '从委员会文明一路攀升至『花园』。每层通关可选取新卡强化牌组，存在度在层间部分恢复。',
       fn: () => { showView('tower'); }
     },
     {
       icon: '❋', color: '#a78bfa', title: '卡牌图鉴', en: 'Card Codex', badge: CARDS.length + ' 张',
+      meta: ['13 个层级', '4 种卡型', '设定原文'],
       desc: '浏览全部卡牌与其设定原文出处。按层级、类型筛选，或搜索效果与原文。',
       fn: () => showView('codex')
     },
     {
       icon: '◈', color: '#34d399', title: '规则与组牌', en: 'Rules & Deck Builder', badge: null,
+      meta: ['完整规则书', '关键词词典', '30 张构筑'],
       desc: '阅读完整规则书与关键词词典，并组建你自己的 30 张牌组。',
       fn: () => showView('rules')
     }
@@ -102,12 +115,18 @@ function renderHome() {
   cards.forEach(c => {
     const node = el('div', 'mode-card');
     node.style.setProperty('--mc', c.color + '22');
+    node.style.setProperty('--mode-c', c.color);
     const ic = el('span', 'mode-icon', c.icon);
     ic.style.color = c.color;
     node.appendChild(ic);
     node.appendChild(el('div', 'mode-title', c.title));
     node.appendChild(el('div', 'mode-en', c.en));
     node.appendChild(el('div', 'mode-desc', c.desc));
+    if (c.meta) {
+      const row = el('div', 'mode-meta');
+      c.meta.forEach(t => row.appendChild(el('span', 'mm-tag', t)));
+      node.appendChild(row);
+    }
     if (c.badge) node.appendChild(el('div', 'mode-badge', c.badge));
     if (c.id) node.id = c.id;
     node.onclick = c.fn;
@@ -176,13 +195,35 @@ function showTierDetail(i) {
 /* ============================================================
    牌组选择
    ============================================================ */
+/* 每套预组在选牌界面展示的 3 张代表卡 */
+const TILES = {
+  silver: ['010', '026', '023'],
+  grammar: ['006', '041', '043'],
+  garden: ['068', '063', '069']
+};
+
 function openDeckSelect() {
   const wrap = el('div');
   const g = el('div', 'choice-grid');
   Object.values(DECKS).forEach(d => {
     const c = el('div', 'choice-card');
-    c.appendChild(el('div', 'cc-t', d.name + '　<span style="font-size:10px;color:var(--txt-mut)">T' + d.tier + '</span>'));
-    c.appendChild(el('div', 'cc-d', d.desc + '<br><b style="color:' + d.color + '">特点：' + d.hint + '</b>'));
+    c.style.setProperty('--dc', d.color);
+    // 层级徽章 + 卡面缩略，选牌组时要能「看见」这套牌
+    const head = el('div', 'cc-head');
+    head.appendChild(el('div', 'cc-t', d.name));
+    head.appendChild(el('div', 'cc-tier', 'T' + d.tier));
+    c.appendChild(head);
+    if (TILES && TILES[d.id]) {
+      const strip = el('div', 'cc-strip');
+      TILES[d.id].forEach(id => {
+        const t = renderCard(CARD_MAP[id], { size: 'mini' });
+        t.classList.add('cc-thumb');
+        strip.appendChild(t);
+      });
+      c.appendChild(strip);
+    }
+    c.appendChild(el('div', 'cc-d', d.desc));
+    c.appendChild(el('div', 'cc-hint', d.hint));
     c.onclick = () => { closeModal(); startBattle(d.id); };
     g.appendChild(c);
   });

@@ -8,6 +8,14 @@ const Codex = {
   /* ---------------- 图鉴 ---------------- */
   init() {
     const bar = document.getElementById('codexBar');
+    const grid = document.getElementById('codexGrid');
+    // 卷首横幅只在首次进入时插入一次（init 每次切视图都会被调用）
+    if (!document.getElementById('codexBanner')) {
+      const b = pageBanner('codex', '七十二张牌，七十二道无限。',
+        'CODEX · SEVENTY-TWO CARDS', '13 个超限层级 · 4 种卡型 · 每张卡都附设定原文出处');
+      b.id = 'codexBanner';
+      bar.parentNode.insertBefore(b, bar);
+    }
     bar.innerHTML = '';
 
     const search = el('input', 'codex-search');
@@ -117,14 +125,35 @@ const Rulebook = {
     if (!host) return;
     host.innerHTML = '';
 
+    host.appendChild(pageBanner('rules', '规则不是束缚，而是胜负的形状。',
+      'RULES OF THE GARDEN', '两条胜利线：抹除存在度，或碾压对手的操作后继'));
+
+    // 关键数值速览：规则太抽象，先给四个数字，玩家一眼能记住
+    const quick = el('div', 'rule-quick');
+    [
+      ['Ψ 12', '算力上限', '每回合 +1，用不完不结转'],
+      ['+2 层', '归虚压制', '高 2 层直接抹除（锐化只需 1 层）'],
+      ['2 Ψ', '幂集跃迁', '单卡层级 +1，每张最多 3 次'],
+      ['12', '后继碾压', '累积后继差到 12 即胜']
+    ].forEach(([v, t, d]) => {
+      const c = el('div', 'rq-cell');
+      c.appendChild(el('div', 'rq-v', v));
+      c.appendChild(el('div', 'rq-t', t));
+      c.appendChild(el('div', 'rq-d', d));
+      quick.appendChild(c);
+    });
+    host.appendChild(quick);
+
     const sec1 = el('div');
+    sec1.style.marginTop = '22px';
     sec1.appendChild(el('h3', 'page-title', '核心规则'));
     sec1.appendChild(el('p', 'page-desc', '本作将「花园」系列中的超限层级体系与算力战争，转化为一套可玩的卡牌规则。两条胜利线并存——抹除存在度，或碾压对手的操作后继。'));
     host.appendChild(sec1);
 
-    RULES.forEach(r => {
+    RULES.forEach((r, i) => {
       const b = el('div', 'rule-block');
-      b.appendChild(el('h4', null, r.title));
+      const h = el('h4', null, `<span class="rb-n">${String(i + 1).padStart(2, '0')}</span>${r.title}`);
+      b.appendChild(h);
       const p = el('p');
       p.innerHTML = r.body.replace(/【(.+?)】/g, '<b>$1</b>');
       b.appendChild(p);
@@ -165,6 +194,12 @@ const Builder = {
   filter: { type: 'ALL', tier: 'ALL', q: '' },
 
   init() {
+    const bb = document.getElementById('builderBanner');
+    if (bb && !bb.dataset.built) {
+      bb.dataset.built = '1';
+      bb.appendChild(pageBanner('codex', '把自己的无限，装进三十张牌里。',
+        'DECK CONSTRUCTION · 30 CARDS', '同卡最多 3 张 · 牌组恰好 30 张即可投入对战'));
+    }
     this.deck = this.load() || DECKS.silver.cardIds.slice(0, 30);
     this.buildBar();
     this.renderPool();
@@ -189,11 +224,17 @@ const Builder = {
     if (!bar) return;
     bar.innerHTML = '';
 
+    // 搜索独占一行，卡型 / 层级各占一行 —— 一堆筛选按钮挤成一团很难扫读
+    const srow = el('div', 'pb-row pb-row-search');
     const search = el('input', 'codex-search');
-    search.placeholder = '搜索卡名 / 效果…';
+    search.placeholder = '搜索卡名 / 效果 / 设定原文…';
     search.value = this.filter.q;
     search.oninput = () => { this.filter.q = search.value.trim().toLowerCase(); this.renderPool(); };
-    bar.appendChild(search);
+    srow.appendChild(search);
+    const cnt = el('div', 'pb-count');
+    cnt.id = 'poolCount';
+    srow.appendChild(cnt);
+    bar.appendChild(srow);
 
     const mk = (grp, val, label, color) => {
       const c = el('div', 'filter-chip' + (this.filter[grp] === val ? ' on' : ''), label);
@@ -205,18 +246,20 @@ const Builder = {
         c.classList.add('on');
         this.renderPool();
       };
-      bar.appendChild(c);
+      return c;
     };
 
+    const trow = el('div', 'pb-row');
+    trow.appendChild(el('span', 'pb-lbl', '卡型'));
     [['ALL', '全部'], ['ENTITY', '实体'], ['STRUCTURE', '结构'], ['CONCEPT', '概念'], ['PARADOX', '悖论']]
-      .forEach(([k, l]) => mk('type', k, l));
-    mk('tier', 'ALL', '全部层级');
-    [1, 4, 6, 7, 8, 9, 10, 11, 12].forEach(t => mk('tier', t, 'T' + t, TIERS[t].color));
+      .forEach(([k, l]) => trow.appendChild(mk('type', k, l)));
+    bar.appendChild(trow);
 
-    const cnt = el('div');
-    cnt.style.cssText = 'margin-left:auto;font-size:10.5px;color:var(--txt-mut);font-family:var(--font-num)';
-    cnt.id = 'poolCount';
-    bar.appendChild(cnt);
+    const irow = el('div', 'pb-row');
+    irow.appendChild(el('span', 'pb-lbl', '层级'));
+    irow.appendChild(mk('tier', 'ALL', '全部'));
+    [1, 4, 6, 7, 8, 9, 10, 11, 12].forEach(t => irow.appendChild(mk('tier', t, 'T' + t, TIERS[t].color)));
+    bar.appendChild(irow);
   },
 
   /* ---------- 卡池 ---------- */
@@ -240,11 +283,33 @@ const Builder = {
     if (pc) pc.textContent = list.length + ' / ' + CARDS.length + ' 张';
 
     if (!list.length) {
-      host.appendChild(el('div', 'pool-empty', '没有匹配的卡牌。换个筛选条件试试。'));
+      const empty = el('div', 'pool-empty');
+      empty.appendChild(el('div', 'pe-glyph', '∅'));
+      empty.appendChild(el('div', 'pe-t', '没有匹配的卡牌'));
+      empty.appendChild(el('div', 'pe-s', '换个卡型 / 层级，或直接清空搜索词。'));
+      const reset = el('button', 'btn btn-sm', '重置筛选');
+      reset.onclick = () => {
+        this.filter = { q: '', type: 'ALL', tier: 'ALL' };
+        this.buildBar(); this.renderPool();
+      };
+      empty.appendChild(reset);
+      host.appendChild(empty);
       return;
     }
 
+    // 卡池按层级分组：72 张平铺很难找到「我想加的那张」
+    let lastTier = -1;
     list.forEach(c => {
+      if (c.tier !== lastTier) {
+        lastTier = c.tier;
+        const t = TIERS[c.tier];
+        const head = el('div', 'pool-group');
+        head.style.setProperty('--tier-color', t.color);
+        head.appendChild(el('span', 'pg-sym', t.symbol));
+        head.appendChild(el('span', 'pg-name', 'T' + c.tier + ' · ' + t.name));
+        head.appendChild(el('span', 'pg-count', String(list.filter(x => x.tier === c.tier).length)));
+        host.appendChild(head);
+      }
       const holder = el('div', 'pool-card');
       holder.dataset.cardId = c.id;
       const node = renderCard(c, { size: 'mini' });

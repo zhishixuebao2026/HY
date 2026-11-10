@@ -46,7 +46,7 @@ const CARDS = [
   },
   {
     id:'002', name:'自然数集的牧者', en:'Shepherd of ℕ', type:'ENTITY', tier:1, cost:1, atk:2, hp:1,
-    proc:'lattice', keywords:[], text:'亡语：抽 1 张牌。',
+    proc:'lattice', art:'pastoral', keywords:[], text:'亡语：抽 1 张牌。',
     effects:[{when:'deathrattle', op:'draw', n:1}],
     lore:'ℵ₀（阿列夫0）就是第一个无限，代表所有自然数的集合。',
     source:'设定档案'
@@ -67,7 +67,7 @@ const CARDS = [
   },
   {
     id:'005', name:'递归套娃', en:'Recursive Nesting', type:'CONCEPT', tier:1, cost:2,
-    proc:'spiral', keywords:[], text:'使一个友方实体层级 +1；若它已是你层级最高的实体，则改为 +2。',
+    proc:'spiral', art:'recursion_nest', keywords:[], text:'使一个友方实体层级 +1；若它已是你层级最高的实体，则改为 +2。',
     effects:[{when:'cast', op:'tierUpAlly', n:1, bonus:2}], needTarget:true, targetFilter:'allyEntity',
     lore:'无限的套娃模式确实是没有尽头的，但这种模式又确实存在一个序数级的上界。',
     source:'《分形图》'
@@ -83,28 +83,28 @@ const CARDS = [
   },
   {
     id:'007', name:'实数之海', en:'Sea of Reals', type:'ENTITY', tier:2, cost:3, atk:2, hp:5,
-    proc:'flow', keywords:['嘲讽'], text:'嘲讽。',
+    proc:'flow', art:'real_sea', keywords:['嘲讽'], text:'嘲讽。',
     effects:[],
     lore:'在数轴上，即便是 0 到 1 间存在的实数也比自然数集要多。实数集是不可数集。',
     source:'《花园神祇》'
   },
   {
     id:'008', name:'不可数集', en:'Uncountable Set', type:'ENTITY', tier:2, cost:3, atk:4, hp:3,
-    proc:'voronoi', keywords:[], text:'战吼：弃 1 张牌，然后抽 2 张牌。',
+    proc:'voronoi', art:'uncountable', keywords:[], text:'战吼：弃 1 张牌，然后抽 2 张牌。',
     effects:[{when:'battlecry', op:'discardDraw', discard:1, draw:2}],
     lore:'奇数和偶数个数的和，与奇数或者偶数的个数是一样多的。',
     source:'《分形图》'
   },
   {
     id:'009', name:'连续统之影', en:'Shadow of the Continuum', type:'ENTITY', tier:2, cost:4, atk:5, hp:4,
-    proc:'moire', keywords:['锐化'], text:'锐化：此卡发起的压制只需高出 1 层即可成立。',
+    proc:'moire', art:'continuum', keywords:['锐化'], text:'锐化：此卡发起的压制只需高出 1 层即可成立。',
     effects:[{when:'static', op:'sharpness', n:1}],
     lore:'就像 1 和 0 之间依然可以放下无数个实数一样，那些实数间又可以放下同样数量的其他实数，这是没有边界的。',
     source:'《26号宇宙》'
   },
   {
     id:'010', name:'区间之实', en:'Reals of the Interval', type:'CONCEPT', tier:2, cost:2,
-    proc:'wave', keywords:[], text:'抽 1 张牌，然后使一个友方实体获得 +1/+1。',
+    proc:'wave', art:'interval', keywords:[], text:'抽 1 张牌，然后使一个友方实体获得 +1/+1。',
     effects:[{when:'cast', op:'draw', n:1},{when:'cast', op:'buffAlly', atk:1, hp:1}], needTarget:true, targetFilter:'allyEntity',
     lore:'把那些数变成可拓展宇宙的个数同样如此。',
     source:'《26号宇宙》'
@@ -134,7 +134,7 @@ const CARDS = [
   },
   {
     id:'014', name:'β序数', en:'Ordinal β', type:'ENTITY', tier:3, cost:3, atk:4, hp:3,
-    proc:'lattice', keywords:[], text:'战吼：使一个友方实体层级 +1。',
+    proc:'lattice', art:'beta_ordinal', keywords:[], text:'战吼：使一个友方实体层级 +1。',
     effects:[{when:'battlecry', op:'tierUpAlly', n:1}], needTarget:true, targetFilter:'allyEntity',
     lore:'β 代表的就是一个全新的序数，一个容纳和表示之前一切套娃形式的序数总和。',
     source:'《花园神祇》'
@@ -178,7 +178,7 @@ const CARDS = [
   },
   {
     id:'020', name:'算力矿井', en:'Computation Mine', type:'STRUCTURE', tier:4, cost:4, atk:0, hp:4,
-    proc:'voronoi', keywords:[], text:'每回合开始：你获得 1 点算力。',
+    proc:'voronoi', art:'computation_mine', keywords:[], text:'每回合开始：你获得 1 点算力。',
     effects:[{when:'startOfTurn', op:'gainMana', n:1}],
     lore:'其中受袭的还包括我们即将开采的算力矿井。',
     source:'《银之网》'
@@ -215,7 +215,7 @@ const CARDS = [
   },
   {
     id:'025', name:'信息碑', en:'Information Stele', type:'CONCEPT', tier:5, cost:2,
-    proc:'tree', keywords:[], text:'抽 2 张牌。',
+    proc:'tree', art:'information_stele', keywords:[], text:'抽 2 张牌。',
     effects:[{when:'cast', op:'draw', n:2}],
     lore:'信息碑测试过敌人在销毁宇宙集群时残留的辐射。显然，他们的算力技术已经足以和我们对抗。',
     source:'《银之网》'
@@ -231,7 +231,7 @@ const CARDS = [
   /* ================= T6 · 大基数 ================= */
   {
     id:'027', name:'不可达基数', en:'Inaccessible Cardinal', type:'ENTITY', tier:6, cost:6, atk:7, hp:7,
-    proc:'mandelbrot', keywords:['不可指定'], text:'不可指定：无法被层级 ≤ 4 的卡牌效果指定为目标。',
+    proc:'mandelbrot', art:'inaccessible', keywords:['不可指定'], text:'不可指定：无法被层级 ≤ 4 的卡牌效果指定为目标。',
     effects:[{when:'static', op:'untargetableBelow', n:5}],
     lore:'不可达基数实则是无法从更小的基数通过取幂集的基数或者是取极限得到。',
     source:'《花园神祇》'

@@ -24,11 +24,12 @@
       <h1>花园：超限算力战争</h1>
       <span class="sub">THE GARDEN</span>
     </div>
+    <div class="turn-badge" id="turnBadge" role="status" aria-live="polite"></div>
     <nav class="navtabs" aria-label="主导航">
       <button class="navtab on" data-view="home">首页</button>
-      <button class="navtab" data-view="academy">序章 · 学院</button>
+      <button class="navtab" data-view="academy"><span class="nt-long">序章 · 学院</span><span class="nt-short">学院</span></button>
       <button class="navtab" data-view="battle">对战</button>
-      <button class="navtab" data-view="tower">超限阶梯</button>
+      <button class="navtab" data-view="tower"><span class="nt-long">超限阶梯</span><span class="nt-short">阶梯</span></button>
       <button class="navtab" data-view="codex">图鉴</button>
       <button class="navtab" data-view="rules">规则</button>
       <button class="navtab" data-view="builder">组牌</button>
@@ -55,13 +56,19 @@
           <!-- 后继天平 -->
           <div id="successorBeam">
             <div class="beam">
-              <div class="beam-title">后 继 差 · 达 到 12 即 碾 压 获 胜</div>
-              <div class="beam-track"></div>
-              <div class="beam-side l" id="beamL"></div>
-              <div class="beam-side r" id="beamR"></div>
-              <div class="beam-zero"></div>
-              <div class="beam-cap l" id="beamCapL">0</div>
-              <div class="beam-cap r" id="beamCapR">0</div>
+              <div class="beam-title">后 继 差 · 任 一 方 达 到 12 即 碾 压 获 胜</div>
+              <div class="beam-scale">
+                <span class="beam-cap l" id="beamCapL">0</span>
+                <span class="beam-lbl l">我</span>
+                <div class="beam-track">
+                  <div class="beam-ticks"></div>
+                  <div class="beam-side l" id="beamL"></div>
+                  <div class="beam-side r" id="beamR"></div>
+                  <div class="beam-zero"></div>
+                </div>
+                <span class="beam-lbl r">敌</span>
+                <span class="beam-cap r" id="beamCapR">0</span>
+              </div>
             </div>
           </div>
 
@@ -121,6 +128,7 @@
 
   <!-- ==================== 组牌 ==================== -->
   <div class="view" id="viewBuilder">
+    <div class="builder-banner" id="builderBanner"></div>
     <div class="deck-builder">
       <div class="pool-col">
         <div class="deck-head">
